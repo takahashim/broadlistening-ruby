@@ -28,8 +28,8 @@ module Broadlistening
       },
       local: {
         api_key: "not-needed",
-        model: "gpt-4o-mini",
-        embedding_model: "text-embedding-3-small"
+        model: "llama3",
+        embedding_model: "nomic-embed-text"
       }
     }.freeze
 

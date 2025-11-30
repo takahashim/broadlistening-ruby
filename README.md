@@ -107,6 +107,34 @@ Broadlistening::Pipeline.new(
 )
 ```
 
+### ローカル LLM の使用
+
+GPU を搭載したマシンでローカル LLM を使用したい場合は、以下の手順に従ってください：
+
+1. Ollama をインストールして起動します
+2. 必要なモデルをダウンロードします：
+   ```sh
+   ollama pull llama3
+   ollama pull nomic-embed-text
+   ```
+3. Ruby で `provider: :local` を指定して使用します：
+   ```ruby
+   config = Broadlistening::Config.new(
+     provider: :local,
+     model: "llama3",
+     embedding_model: "nomic-embed-text",
+     local_llm_address: "localhost:11434",
+     cluster_nums: [5, 15]
+   )
+   pipeline = Broadlistening::Pipeline.new(config)
+   result = pipeline.run(comments, output_dir: "./output")
+   ```
+
+**注意**:
+
+- ローカル LLM の使用には十分な GPU メモリが必要です（8GB 以上推奨）
+- 初回起動時にはモデルのダウンロードに時間がかかる場合があります
+
 ## 出力形式
 
 パイプラインの結果は以下の構造を持つ Hash です：
