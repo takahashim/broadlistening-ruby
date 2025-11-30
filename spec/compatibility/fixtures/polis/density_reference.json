@@ -1,0 +1,126 @@
+{
+  "clusters": {
+    "1_0": {
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          0.5,
+          0.5
+        ]
+      ],
+      "level": 1
+    },
+    "1_1": {
+      "points": [
+        [
+          5.0,
+          5.0
+        ],
+        [
+          5.1,
+          5.1
+        ]
+      ],
+      "level": 1
+    },
+    "1_2": {
+      "points": [
+        [
+          10.0,
+          0.0
+        ],
+        [
+          10.0,
+          0.1
+        ],
+        [
+          10.0,
+          0.2
+        ],
+        [
+          10.0,
+          0.3
+        ]
+      ],
+      "level": 1
+    },
+    "2_0": {
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5,
+          0.5
+        ]
+      ],
+      "level": 2
+    },
+    "2_1": {
+      "points": [
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "level": 2
+    },
+    "2_2": {
+      "points": [
+        [
+          5.0,
+          5.0
+        ],
+        [
+          5.1,
+          5.0
+        ],
+        [
+          5.0,
+          5.1
+        ]
+      ],
+      "level": 2
+    }
+  },
+  "expected_results": {
+    "1_1": {
+      "density": 14.142135603731,
+      "density_rank": 1,
+      "density_rank_percentile": 0.3333333333333333
+    },
+    "1_2": {
+      "density": 9.999999990000001,
+      "density_rank": 2,
+      "density_rank_percentile": 0.6666666666666666
+    },
+    "1_0": {
+      "density": 2.1213203431096423,
+      "density_rank": 3,
+      "density_rank_percentile": 1.0
+    },
+    "2_1": {
+      "density": 10000000000.0,
+      "density_rank": 1,
+      "density_rank_percentile": 0.3333333333333333
+    },
+    "2_2": {
+      "density": 15.289611939755252,
+      "density_rank": 2,
+      "density_rank_percentile": 0.6666666666666666
+    },
+    "2_0": {
+      "density": 2.82842712394619,
+      "density_rank": 3,
+      "density_rank_percentile": 1.0
+    }
+  }
+}

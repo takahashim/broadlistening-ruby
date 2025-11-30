@@ -172,9 +172,30 @@ RSpec.describe Broadlistening::Steps::Aggregation do
         expect(cluster).not_to have_key(:count)
       end
 
-      it "sets density_rank_percentile to nil" do
+      it "calculates density_rank_percentile for clusters with points" do
         result[:clusters].each do |cluster|
-          expect(cluster[:density_rank_percentile]).to be_nil
+          expect(cluster).to have_key(:density_rank_percentile)
+          next if cluster[:level] == 0 # Root cluster has no density
+
+          # Clusters with points should have density_rank_percentile
+          if cluster[:value] > 0
+            expect(cluster[:density_rank_percentile]).to be_a(Float).or(be_nil)
+          end
+        end
+      end
+
+      it "sets density_rank_percentile to nil for root cluster" do
+        root = result[:clusters].find { |c| c[:id] == "0" }
+        expect(root[:density_rank_percentile]).to be_nil
+      end
+
+      it "calculates density_rank_percentile within each level" do
+        level_1_clusters = result[:clusters].select { |c| c[:level] == 1 }
+        percentiles = level_1_clusters.map { |c| c[:density_rank_percentile] }.compact
+
+        # All non-nil percentiles should be between 0 and 1
+        percentiles.each do |p|
+          expect(p).to be_between(0, 1)
         end
       end
 

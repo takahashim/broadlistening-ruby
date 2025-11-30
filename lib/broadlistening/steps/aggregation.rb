@@ -54,20 +54,49 @@ module Broadlistening
 
       def build_clusters
         clusters = [ root_cluster ]
+        density_data = calculate_density_data
 
         context.labels.each_value do |label|
+          cluster_id = label[:cluster_id]
+          density_info = density_data[cluster_id]
+
           clusters << {
             level: label[:level],
-            id: label[:cluster_id],
+            id: cluster_id,
             label: label[:label],
             takeaway: label[:description] || "",
-            value: count_arguments_in_cluster(label[:cluster_id]),
+            value: count_arguments_in_cluster(cluster_id),
             parent: find_parent_cluster(label),
-            density_rank_percentile: nil
+            density_rank_percentile: density_info&.dig(:density_rank_percentile)
           }
         end
 
         clusters.sort_by { |c| [ c[:level], c[:id] ] }
+      end
+
+      def calculate_density_data
+        return {} if context.arguments.empty?
+
+        # Build cluster data structure for density calculation
+        cluster_data = {}
+
+        context.labels.each_value do |label|
+          cluster_id = label[:cluster_id]
+          points = context.arguments.select { |arg| arg.in_cluster?(cluster_id) }
+                                    .map { |arg| [ arg.x, arg.y ] }
+                                    .reject { |p| p.any?(&:nil?) }
+
+          next if points.empty?
+
+          cluster_data[cluster_id] = {
+            points: points,
+            level: label[:level]
+          }
+        end
+
+        return {} if cluster_data.empty?
+
+        DensityCalculator.calculate_with_ranks(cluster_data)
       end
 
       def root_cluster

@@ -25,6 +25,7 @@ require_relative "broadlistening/cli"
 require_relative "broadlistening/llm_client"
 require_relative "broadlistening/kmeans"
 require_relative "broadlistening/hierarchical_clustering"
+require_relative "broadlistening/density_calculator"
 
 # Steps
 require_relative "broadlistening/steps/base_step"

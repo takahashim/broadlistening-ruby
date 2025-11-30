@@ -43,14 +43,94 @@ module Broadlistening
 
       def parse_extraction_response(response)
         parsed = JSON.parse(response)
-        opinions = parsed["extractedOpinionList"] || parsed["opinions"] || []
-        opinions.select { |o| o.is_a?(String) && !o.strip.empty? }
+
+        # Handle dict response (structured output)
+        if parsed.is_a?(Hash)
+          opinions = parsed["extractedOpinionList"] || parsed["opinions"] || []
+          return opinions.select { |o| o.is_a?(String) && !o.strip.empty? }
+        end
+
+        # Handle string response (single opinion)
+        if parsed.is_a?(String)
+          return [ parsed.strip ].reject(&:empty?)
+        end
+
+        # Handle array response
+        if parsed.is_a?(Array)
+          return parsed.select { |o| o.is_a?(String) && !o.strip.empty? }.map(&:strip)
+        end
+
+        []
       rescue JSON::ParserError
         parse_fallback_response(response)
       end
 
+      # Fallback parser matching Python's parse_response behavior
+      # Handles: code blocks, trailing commas, embedded JSON arrays
       def parse_fallback_response(response)
+        return [] if response.nil? || response.strip.empty?
+
+        # Remove markdown code blocks
+        cleaned = response.gsub(/```json\s*/i, "").gsub(/```\s*/, "")
+
+        # Try to extract JSON array using balanced bracket matching
+        json_str = extract_balanced_json_array(cleaned)
+        if json_str
+          # Fix trailing commas before ]
+          json_str = json_str.gsub(/,\s*\]/, "]")
+
+          begin
+            parsed = JSON.parse(json_str)
+            if parsed.is_a?(Array)
+              return parsed.select { |o| o.is_a?(String) }.map(&:strip).reject(&:empty?)
+            end
+          rescue JSON::ParserError
+            # Fall through to line-based parsing
+          end
+        end
+
+        # Final fallback: split by newlines
         response.split("\n").map(&:strip).reject(&:empty?)
+      end
+
+      # Extract a balanced JSON array from text (handles nested arrays)
+      def extract_balanced_json_array(text)
+        start_idx = text.index("[")
+        return nil unless start_idx
+
+        depth = 0
+        in_string = false
+        escape_next = false
+
+        (start_idx...text.length).each do |i|
+          char = text[i]
+
+          if escape_next
+            escape_next = false
+            next
+          end
+
+          if char == "\\"
+            escape_next = true
+            next
+          end
+
+          if char == '"'
+            in_string = !in_string
+            next
+          end
+
+          next if in_string
+
+          if char == "["
+            depth += 1
+          elsif char == "]"
+            depth -= 1
+            return text[start_idx..i] if depth == 0
+          end
+        end
+
+        nil # Unbalanced brackets
       end
 
       def build_arguments_and_relations(comments, results)

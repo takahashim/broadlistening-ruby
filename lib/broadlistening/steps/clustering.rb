@@ -25,7 +25,11 @@ module Broadlistening
 
       def perform_umap(embeddings)
         n_samples = embeddings.shape[0]
-        num_neighbors = [ 15, n_samples - 1 ].min
+        default_n_neighbors = 15
+
+        # For small datasets, reduce n_neighbors to avoid UMAP errors
+        # Python: n_neighbors = max(2, n_samples - 1) when n_samples <= 15
+        num_neighbors = n_samples <= default_n_neighbors ? [ 2, n_samples - 1 ].max : default_n_neighbors
 
         # Convert to SFloat for umappp (required format)
         embeddings_sfloat = Numo::SFloat.cast(embeddings)
