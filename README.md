@@ -1,35 +1,180 @@
 # Broadlistening
 
-TODO: Delete this and the text below, and describe your gem
+Broadlistening パイプラインの Ruby 実装です。LLM を使用して公開コメントをクラスタリング・分析します。
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/broadlistening`. To experiment with that code, run `bin/console` for an interactive prompt.
+## 概要
 
-## Installation
+Broadlistening は、大量のコメントや意見を AI を活用して分析するためのパイプラインです。以下のステップで処理を行います：
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+1. **Extraction (意見抽出)** - コメントから主要な意見を LLM で抽出
+2. **Embedding (ベクトル化)** - 抽出した意見をベクトル化
+3. **Clustering (クラスタリング)** - UMAP + KMeans + 階層的クラスタリング
+4. **Initial Labelling (初期ラベリング)** - 各クラスタに LLM でラベル付け
+5. **Merge Labelling (ラベル統合)** - 階層的にラベルを統合
+6. **Overview (概要生成)** - 全体の概要を LLM で生成
+7. **Aggregation (JSON 組み立て)** - 結果を JSON 形式で出力
 
-Install the gem and add to the application's Gemfile by executing:
+## インストール
 
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+### Gemfile に追加
+
+```ruby
+gem 'broadlistening', path: 'vendor/broadlistening'
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+### 依存関係のインストール
 
 ```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+bundle install
 ```
 
-## Usage
+## 使い方
 
-TODO: Write usage instructions here
+### 基本的な使用方法
 
-## Development
+```ruby
+require 'broadlistening'
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+# コメントデータを準備
+comments = [
+  { id: "1", body: "環境問題への対策が必要です", proposal_id: "123" },
+  { id: "2", body: "公共交通機関の充実を希望します", proposal_id: "123" },
+  # ...
+]
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+# パイプラインを実行
+pipeline = Broadlistening::Pipeline.new(
+  api_key: ENV['OPENAI_API_KEY'],
+  model: "gpt-4o-mini",
+  cluster_nums: [5, 15]
+)
+result = pipeline.run(comments)
 
-## Contributing
+# 結果を取得
+puts result[:overview]
+puts result[:clusters]
+```
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/takahashim/broadlistening.
+### Rails での使用例
+
+```ruby
+# app/jobs/analysis_job.rb
+class AnalysisJob < ApplicationJob
+  queue_as :analysis
+
+  def perform(proposal_id)
+    proposal = Proposal.find(proposal_id)
+    comments = proposal.comments.map do |c|
+      { id: c.id, body: c.body, proposal_id: c.proposal_id }
+    end
+
+    pipeline = Broadlistening::Pipeline.new(
+      api_key: ENV['OPENAI_API_KEY'],
+      model: "gpt-4o-mini",
+      cluster_nums: [5, 15]
+    )
+    result = pipeline.run(comments)
+
+    proposal.create_analysis_result!(
+      result_data: result,
+      comment_count: comments.size
+    )
+  end
+end
+```
+
+### 設定オプション
+
+```ruby
+Broadlistening::Pipeline.new(
+  api_key: "your-api-key",          # OpenAI API キー（必須）
+  model: "gpt-4o-mini",             # LLM モデル（デフォルト: gpt-4o-mini）
+  embedding_model: "text-embedding-3-small",  # 埋め込みモデル
+  cluster_nums: [5, 15],            # クラスタ階層の数（デフォルト: [5, 15]）
+  workers: 10,                      # 並列処理のワーカー数
+  prompts: {                        # カスタムプロンプト（オプション）
+    extraction: "...",
+    initial_labelling: "...",
+    merge_labelling: "...",
+    overview: "..."
+  }
+)
+```
+
+## 出力形式
+
+パイプラインの結果は以下の構造を持つ Hash です：
+
+```ruby
+{
+  arguments: [
+    {
+      arg_id: "A1_0",
+      argument: "環境問題への対策が必要",
+      x: 0.5,           # UMAP X座標
+      y: 0.3,           # UMAP Y座標
+      cluster_ids: ["0", "1_0", "2_3"]  # 所属クラスタID
+    },
+    # ...
+  ],
+  clusters: [
+    {
+      level: 0,
+      id: "0",
+      label: "全体",
+      description: "",
+      count: 100,
+      parent: nil
+    },
+    {
+      level: 1,
+      id: "1_0",
+      label: "環境・エネルギー",
+      description: "環境問題やエネルギー政策に関する意見",
+      count: 25,
+      parent: "0"
+    },
+    # ...
+  ],
+  relations: [
+    { arg_id: "A1_0", comment_id: "1", proposal_id: "123" },
+    # ...
+  ],
+  comment_count: 50,
+  argument_count: 100,
+  overview: "分析の概要テキスト...",
+  config: { model: "gpt-4o-mini", ... }
+}
+```
+
+## 依存関係
+
+### 必須
+- Ruby >= 3.1.0
+- activesupport >= 7.0
+- numo-narray ~> 0.9
+- numo-linalg ~> 0.1
+- ruby-openai ~> 7.0
+- parallel ~> 1.20
+
+### オプション
+- umappp ~> 0.1 - UMAP による次元削減（C++ コンパイラが必要）
+
+`umappp` がインストールされていない場合、PCA（SVD ベース）による次元削減が使用されます。
+
+## 開発
+
+```bash
+# セットアップ
+bin/setup
+
+# テスト実行
+bundle exec rspec
+
+# コンソール
+bin/console
+```
+
+## ライセンス
+
+MIT License

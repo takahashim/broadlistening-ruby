@@ -2,10 +2,13 @@
 
 RSpec.describe Broadlistening do
   it "has a version number" do
-    expect(Broadlistening::VERSION).not_to be nil
+    expect(Broadlistening::VERSION).not_to be_nil
   end
 
-  it "does something useful" do
-    expect(false).to eq(true)
+  it "defines error classes" do
+    expect(Broadlistening::Error).to be < StandardError
+    expect(Broadlistening::ConfigurationError).to be < Broadlistening::Error
+    expect(Broadlistening::LlmError).to be < Broadlistening::Error
+    expect(Broadlistening::ClusteringError).to be < Broadlistening::Error
   end
 end
