@@ -1,67 +1,63 @@
 # Broadlistening
 
-広聴 AIのBroadlistening パイプラインの Ruby 実装です。LLM を使用して公開コメントをクラスタリング・分析します。
+A Ruby implementation of the Kouchou-AI Broadlistening pipeline. Clusters and analyzes public comments using LLM.
 
-## 概要
+[in Japanese](./README.ja.md)
 
-Broadlistening は、大量のコメントや意見を AI を活用して分析するためのパイプラインです。以下のステップで処理を行います：
+## Overview
 
-1. **Extraction (意見抽出)** - コメントから主要な意見を LLM で抽出
-2. **Embedding (ベクトル化)** - 抽出した意見をベクトル化
-3. **Clustering (クラスタリング)** - UMAP + KMeans + 階層的クラスタリング
-4. **Initial Labelling (初期ラベリング)** - 各クラスタに LLM でラベル付け
-5. **Merge Labelling (ラベル統合)** - 階層的にラベルを統合
-6. **Overview (概要生成)** - 全体の概要を LLM で生成
-7. **Aggregation (JSON 組み立て)** - 結果を JSON 形式で出力
+Broadlistening is a pipeline for analyzing large volumes of comments and opinions using AI. It processes data through the following steps:
 
-## インストール
+1. **Extraction** - Extract key opinions from comments using LLM
+2. **Embedding** - Vectorize extracted opinions
+3. **Clustering** - UMAP + KMeans + hierarchical clustering
+4. **Initial Labelling** - Label each cluster using LLM
+5. **Merge Labelling** - Hierarchically integrate labels
+6. **Overview** - Generate overall summary using LLM
+7. **Aggregation** - Output results in JSON format
 
-### Gemfile に追加
+## Installation
+
+Add to your Gemfile:
 
 ```ruby
 gem 'broadlistening'
 ```
 
-または GitHub から直接インストール：
-
-```ruby
-gem 'broadlistening', github: 'takahashim/broadlistening-ruby'
-```
-
-### 依存関係のインストール
+Then run:
 
 ```bash
 bundle install
 ```
 
-## 使い方
+## Usage
 
-### 基本的な使用方法
+### Basic Usage
 
 ```ruby
 require 'broadlistening'
 
-# コメントデータを準備
+# Prepare comment data
 comments = [
-  { id: "1", body: "環境問題への対策が必要です", proposal_id: "123" },
-  { id: "2", body: "公共交通機関の充実を希望します", proposal_id: "123" },
+  { id: "1", body: "We need environmental measures", proposal_id: "123" },
+  { id: "2", body: "I hope for better public transportation", proposal_id: "123" },
   # ...
 ]
 
-# パイプラインを実行
+# Run the pipeline
 pipeline = Broadlistening::Pipeline.new(
   api_key: ENV['OPENAI_API_KEY'],
   model: "gpt-4o-mini",
   cluster_nums: [5, 15]
 )
-result = pipeline.run(comments)
+result = pipeline.run(comments, output_dir: "./output")
 
-# 結果を取得
+# Get results
 puts result[:overview]
 puts result[:clusters]
 ```
 
-### Rails での使用例
+### Rails Example
 
 ```ruby
 # app/jobs/analysis_job.rb
@@ -79,7 +75,7 @@ class AnalysisJob < ApplicationJob
       model: "gpt-4o-mini",
       cluster_nums: [5, 15]
     )
-    result = pipeline.run(comments)
+    result = pipeline.run(comments, output_dir: "./output")
 
     proposal.create_analysis_result!(
       result_data: result,
@@ -89,16 +85,16 @@ class AnalysisJob < ApplicationJob
 end
 ```
 
-### 設定オプション
+### Configuration Options
 
 ```ruby
 Broadlistening::Pipeline.new(
-  api_key: "your-api-key",          # OpenAI API キー（必須）
-  model: "gpt-4o-mini",             # LLM モデル（デフォルト: gpt-4o-mini）
-  embedding_model: "text-embedding-3-small",  # 埋め込みモデル
-  cluster_nums: [5, 15],            # クラスタ階層の数（デフォルト: [5, 15]）
-  workers: 10,                      # 並列処理のワーカー数
-  prompts: {                        # カスタムプロンプト（オプション）
+  api_key: "your-api-key",          # OpenAI API key (required)
+  model: "gpt-4o-mini",             # LLM model (default: gpt-4o-mini)
+  embedding_model: "text-embedding-3-small",  # Embedding model
+  cluster_nums: [5, 15],            # Cluster hierarchy levels (default: [5, 15])
+  workers: 10,                      # Number of parallel workers
+  prompts: {                        # Custom prompts (optional)
     extraction: "...",
     initial_labelling: "...",
     merge_labelling: "...",
@@ -107,17 +103,17 @@ Broadlistening::Pipeline.new(
 )
 ```
 
-### ローカル LLM の使用
+### Using Local LLM
 
-GPU を搭載したマシンでローカル LLM を使用したい場合は、以下の手順に従ってください：
+If you want to use a local LLM on a machine with GPU, follow these steps:
 
-1. Ollama をインストールして起動します
-2. 必要なモデルをダウンロードします：
+1. Install and start Ollama
+2. Download the required models:
    ```sh
    ollama pull llama3
    ollama pull nomic-embed-text
    ```
-3. Ruby で `provider: :local` を指定して使用します：
+3. Use `provider: :local` in Ruby:
    ```ruby
    config = Broadlistening::Config.new(
      provider: :local,
@@ -130,24 +126,24 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
    result = pipeline.run(comments, output_dir: "./output")
    ```
 
-**注意**:
+**Note**:
 
-- ローカル LLM の使用には十分な GPU メモリが必要です（8GB 以上推奨）
-- 初回起動時にはモデルのダウンロードに時間がかかる場合があります
+- Using local LLM requires sufficient GPU memory (8GB or more recommended)
+- Model downloads may take time on first startup
 
-## 出力形式
+## Output Format
 
-パイプラインの結果は以下の構造を持つ Hash です：
+The pipeline result is a Hash with the following structure:
 
 ```ruby
 {
   arguments: [
     {
       arg_id: "A1_0",
-      argument: "環境問題への対策が必要",
-      x: 0.5,           # UMAP X座標
-      y: 0.3,           # UMAP Y座標
-      cluster_ids: ["0", "1_0", "2_3"]  # 所属クラスタID
+      argument: "Environmental measures are needed",
+      x: 0.5,           # UMAP X coordinate
+      y: 0.3,           # UMAP Y coordinate
+      cluster_ids: ["0", "1_0", "2_3"]  # Cluster IDs
     },
     # ...
   ],
@@ -155,7 +151,7 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
     {
       level: 0,
       id: "0",
-      label: "全体",
+      label: "All",
       description: "",
       count: 100,
       parent: nil
@@ -163,8 +159,8 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
     {
       level: 1,
       id: "1_0",
-      label: "環境・エネルギー",
-      description: "環境問題やエネルギー政策に関する意見",
+      label: "Environment & Energy",
+      description: "Opinions on environmental issues and energy policy",
       count: 25,
       parent: "0"
     },
@@ -176,12 +172,12 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
   ],
   comment_count: 50,
   argument_count: 100,
-  overview: "分析の概要テキスト...",
+  overview: "Analysis summary text...",
   config: { model: "gpt-4o-mini", ... }
 }
 ```
 
-## 依存関係
+## Dependencies
 
 - Ruby >= 3.1.0
 - activesupport >= 7.0
@@ -191,9 +187,9 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
 - rice ~> 4.6.0
 - umappp ~> 0.2
 
-### umappp のインストール
+### Installing umappp
 
-umappp は C++ ネイティブ拡張を含むため、インストール時に C++ コンパイラが必要です：
+umappp includes C++ native extensions and requires a C++ compiler:
 
 ```bash
 # macOS
@@ -203,21 +199,21 @@ CXX=clang++ gem install umappp
 gem install umappp
 ```
 
-**注意**: Rice 4.7.x との互換性問題があるため、Rice 4.6.x を使用してください。
+**Note**: Use Rice 4.6.x due to compatibility issues with Rice 4.7.x.
 
-## 開発
+## Development
 
 ```bash
-# セットアップ
+# Setup
 bin/setup
 
-# テスト実行
+# Run tests
 bundle exec rspec
 
-# コンソール
+# Console
 bin/console
 ```
 
-## ライセンス
+## License
 
 AGPL 3.0
