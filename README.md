@@ -32,7 +32,58 @@ bundle install
 
 ## Usage
 
-### Basic Usage
+### Command Line Interface
+
+After installation, you can use the `broadlistening` command:
+
+```bash
+broadlistening config.json [options]
+```
+
+**Options:**
+- `-f, --force` - Force re-run all steps regardless of previous execution
+- `-o, --only STEP` - Run only the specified step (extraction, embedding, clustering, etc.)
+- `--skip-interaction` - Skip the interactive confirmation prompt
+- `-h, --help` - Show help message
+- `-v, --version` - Show version
+
+**Example config.json:**
+
+```json
+{
+  "input": "comments.csv",
+  "question": "What are the main opinions?",
+  "api_key": "sk-...",
+  "model": "gpt-4o-mini",
+  "cluster_nums": [5, 15]
+}
+```
+
+**Input CSV format:**
+
+```csv
+comment-id,comment-body
+1,We need environmental measures
+2,I hope for better public transportation
+```
+
+**Example:**
+
+```bash
+# Run the full pipeline
+broadlistening config.json
+
+# Force re-run all steps
+broadlistening config.json --force
+
+# Run only the extraction step
+broadlistening config.json --only extraction
+
+# Run without confirmation prompt
+broadlistening config.json --skip-interaction
+```
+
+### Ruby API
 
 ```ruby
 require 'broadlistening'

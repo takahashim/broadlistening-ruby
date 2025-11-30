@@ -32,7 +32,58 @@ bundle install
 
 ## 使い方
 
-### 基本的な使用方法
+### コマンドラインインターフェース
+
+インストール後、`broadlistening` コマンドが使用できます：
+
+```bash
+broadlistening config.json [options]
+```
+
+**オプション:**
+- `-f, --force` - 以前の実行結果に関係なく、すべてのステップを強制的に再実行
+- `-o, --only STEP` - 指定したステップのみを実行（extraction, embedding, clustering など）
+- `--skip-interaction` - 確認プロンプトをスキップして即座に実行
+- `-h, --help` - ヘルプメッセージを表示
+- `-v, --version` - バージョンを表示
+
+**config.json の例:**
+
+```json
+{
+  "input": "comments.csv",
+  "question": "主な意見は何ですか？",
+  "api_key": "sk-...",
+  "model": "gpt-4o-mini",
+  "cluster_nums": [5, 15]
+}
+```
+
+**入力 CSV フォーマット:**
+
+```csv
+comment-id,comment-body
+1,環境問題への対策が必要です
+2,公共交通機関の充実を希望します
+```
+
+**実行例:**
+
+```bash
+# パイプライン全体を実行
+broadlistening config.json
+
+# すべてのステップを強制的に再実行
+broadlistening config.json --force
+
+# extraction ステップのみを実行
+broadlistening config.json --only extraction
+
+# 確認プロンプトなしで実行
+broadlistening config.json --skip-interaction
+```
+
+### Ruby API
 
 ```ruby
 require 'broadlistening'
