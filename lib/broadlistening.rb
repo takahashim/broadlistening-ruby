@@ -20,6 +20,7 @@ require_relative "broadlistening/csv_loader"
 require_relative "broadlistening/compatibility"
 require_relative "broadlistening/context"
 require_relative "broadlistening/pipeline"
+require_relative "broadlistening/cli"
 
 require_relative "broadlistening/llm_client"
 require_relative "broadlistening/kmeans"

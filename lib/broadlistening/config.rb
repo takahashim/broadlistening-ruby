@@ -6,7 +6,8 @@ module Broadlistening
   class Config
     attr_reader :model, :embedding_model, :provider, :cluster_nums, :workers, :prompts, :api_key,
                 :enable_source_link, :hidden_properties, :is_pubcom,
-                :api_base_url, :local_llm_address, :azure_api_version
+                :api_base_url, :local_llm_address, :azure_api_version,
+                :input, :question, :name, :intro
 
     DEFAULT_CLUSTER_NUMS = [ 5, 15 ].freeze
     DEFAULT_WORKERS = 10
@@ -37,7 +38,11 @@ module Broadlistening
         is_pubcom: hash[:is_pubcom],
         api_base_url: hash[:api_base_url],
         local_llm_address: hash[:local_llm_address],
-        azure_api_version: hash[:azure_api_version]
+        azure_api_version: hash[:azure_api_version],
+        input: hash[:input],
+        question: hash[:question],
+        name: hash[:name],
+        intro: hash[:intro]
       )
     end
 
@@ -63,6 +68,10 @@ module Broadlistening
       @is_pubcom = options.fetch(:is_pubcom, false)
       @api_base_url = options[:api_base_url] || @provider_obj.base_url
       @azure_api_version = options[:azure_api_version] || ENV.fetch("AZURE_API_VERSION", DEFAULT_AZURE_API_VERSION)
+      @input = options[:input]
+      @question = options[:question]
+      @name = options[:name]
+      @intro = options[:intro]
 
       validate!
     end
@@ -79,8 +88,12 @@ module Broadlistening
         is_pubcom: is_pubcom,
         api_base_url: api_base_url,
         local_llm_address: local_llm_address,
-        azure_api_version: azure_api_version
-      }
+        azure_api_version: azure_api_version,
+        input: input,
+        question: question,
+        name: name,
+        intro: intro
+      }.compact
     end
 
     def to_json(*args)
