@@ -41,4 +41,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "ruby-openai", "~> 7.0"
   spec.add_dependency "umappp", "~> 0.2"
   spec.add_dependency "json_schemer", "~> 2.0"
+  spec.add_dependency "retriable", "~> 3.1"
 end

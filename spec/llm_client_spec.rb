@@ -12,7 +12,8 @@ RSpec.describe Broadlistening::LlmClient do
   let(:client) { described_class.new(config) }
 
   before do
-    allow_any_instance_of(described_class).to receive(:sleep)
+    # Disable sleep during retries for faster tests
+    allow(Retriable).to receive(:sleep)
   end
 
   describe "#chat" do
@@ -245,6 +246,46 @@ RSpec.describe Broadlistening::LlmClient do
       it "retries on connection reset" do
         expect { client.chat(system: system_prompt, user: user_message) }
           .to raise_error(Broadlistening::LlmError, /failed after 3 retries/)
+      end
+    end
+
+    context "with rate limit error (429)" do
+      before do
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .to_raise(Faraday::TooManyRequestsError.new("429 Too Many Requests", { status: 429 }))
+      end
+
+      it "retries on rate limit error" do
+        expect { client.chat(system: system_prompt, user: user_message) }
+          .to raise_error(Broadlistening::LlmError, /failed after 3 retries/)
+      end
+    end
+
+    context "with rate limit error that recovers" do
+      before do
+        call_count = 0
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .to_return do |_request|
+            call_count += 1
+            if call_count < 3
+              raise Faraday::TooManyRequestsError.new("429 Too Many Requests", { status: 429 })
+            else
+              {
+                status: 200,
+                body: {
+                  "choices" => [
+                    { "message" => { "content" => "Success after rate limit" } }
+                  ]
+                }.to_json,
+                headers: { "Content-Type" => "application/json" }
+              }
+            end
+          end
+      end
+
+      it "recovers after rate limit retries" do
+        result = client.chat(system: system_prompt, user: user_message)
+        expect(result).to eq("Success after rate limit")
       end
     end
   end

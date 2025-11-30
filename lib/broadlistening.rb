@@ -7,6 +7,7 @@ require "openai"
 require "parallel"
 require "json"
 require "umappp"
+require "retriable"
 
 require_relative "broadlistening/version"
 require_relative "broadlistening/cluster_label"
