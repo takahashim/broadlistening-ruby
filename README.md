@@ -1,6 +1,6 @@
 # Broadlistening
 
-A Ruby implementation of the Kouchou-AI Broadlistening pipeline. Clusters and analyzes public comments using LLM.
+A Ruby implementation of the [Kouchou-AI](https://github.com/digitaldemocracy2030/kouchou-ai) [Broadlistening pipeline](https://github.com/digitaldemocracy2030/kouchou-ai/tree/main/server/broadlistening). Clusters and analyzes public comments using LLM.
 
 [in Japanese](./README.ja.md)
 

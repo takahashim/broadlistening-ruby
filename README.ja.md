@@ -1,6 +1,6 @@
 # Broadlistening
 
-広聴 AIのBroadlistening パイプラインの Ruby 実装です。LLM を使用して公開コメントをクラスタリング・分析します。
+[広聴 AI](https://github.com/digitaldemocracy2030/kouchou-ai)の[Broadlistening パイプライン](https://github.com/digitaldemocracy2030/kouchou-ai/tree/main/server/broadlistening)のRuby実装です。LLMを使用して公開コメントをクラスタリング・分析します。
 
 [in English](./README.md)
 
