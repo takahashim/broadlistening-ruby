@@ -8,35 +8,18 @@ module Broadlistening
                 :enable_source_link, :hidden_properties, :is_pubcom,
                 :api_base_url, :local_llm_address, :azure_api_version
 
-    DEFAULT_MODEL = "gpt-4o-mini"
-    DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-    DEFAULT_PROVIDER = "openai"
     DEFAULT_CLUSTER_NUMS = [ 5, 15 ].freeze
     DEFAULT_WORKERS = 10
-    DEFAULT_LOCAL_LLM_ADDRESS = "localhost:11434"
     DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
 
-    # プロバイダー別のURI設定
-    PROVIDER_URI_BASE = {
-      "gemini" => "https://generativelanguage.googleapis.com/v1beta/openai/",
-      "openrouter" => "https://openrouter.ai/api/v1"
-    }.freeze
-
-    # サポートされているプロバイダー一覧
-    SUPPORTED_PROVIDERS = %w[openai azure gemini openrouter local].freeze
-
-    # JSON文字列からConfigを生成
     def self.from_json(json_string)
       data = JSON.parse(json_string, symbolize_names: true)
       from_hash(data)
     end
 
-    # Hashからonfigを生成（Python版config.jsonの構造にも対応）
     def self.from_hash(hash)
-      # プロンプトのキーをシンボルに変換
       prompts = hash[:prompts]&.transform_keys(&:to_sym)
 
-      # Python版config.jsonのネスト構造にも対応
       cluster_nums = hash[:cluster_nums] || hash.dig(:hierarchical_clustering, :cluster_nums)
       workers = hash[:workers] || hash.dig(:extraction, :workers)
       hidden_properties = hash[:hidden_properties] || hash.dig(:aggregation, :hidden_properties)
@@ -58,24 +41,27 @@ module Broadlistening
       )
     end
 
-    # JSONファイルからConfigを生成
     def self.from_file(path)
       from_json(File.read(path))
     end
 
     def initialize(options = {})
-      @provider = options[:provider] || DEFAULT_PROVIDER
-      @model = options[:model] || default_model_for_provider
-      @embedding_model = options[:embedding_model] || default_embedding_model_for_provider
+      @local_llm_address = options[:local_llm_address] || ENV.fetch("LOCAL_LLM_ADDRESS", "localhost:11434")
+      @provider_obj = Provider.new(
+        options[:provider] || "openai",
+        local_llm_address: @local_llm_address
+      )
+      @provider = @provider_obj.name
+      @model = options[:model] || @provider_obj.default_model
+      @embedding_model = options[:embedding_model] || @provider_obj.default_embedding_model
       @cluster_nums = options[:cluster_nums] || DEFAULT_CLUSTER_NUMS.dup
       @workers = options[:workers] || DEFAULT_WORKERS
       @prompts = default_prompts.merge(options[:prompts] || {})
-      @api_key = options[:api_key] || api_key_from_env
+      @api_key = options[:api_key] || @provider_obj.api_key
       @enable_source_link = options.fetch(:enable_source_link, false)
       @hidden_properties = options.fetch(:hidden_properties, {}) || {}
       @is_pubcom = options.fetch(:is_pubcom, false)
-      @api_base_url = options[:api_base_url] || api_base_url_from_env
-      @local_llm_address = options[:local_llm_address] || ENV.fetch("LOCAL_LLM_ADDRESS", DEFAULT_LOCAL_LLM_ADDRESS)
+      @api_base_url = options[:api_base_url] || @provider_obj.base_url
       @azure_api_version = options[:azure_api_version] || ENV.fetch("AZURE_API_VERSION", DEFAULT_AZURE_API_VERSION)
 
       validate!
@@ -97,17 +83,14 @@ module Broadlistening
       }
     end
 
-    # JSONへのエクスポート
     def to_json(*args)
       to_h.merge(prompts: prompts).to_json(*args)
     end
 
-    # JSONファイルへの保存
     def save_to_file(path)
       File.write(path, JSON.pretty_generate(to_h.merge(prompts: prompts)))
     end
 
-    # Returns list of property names to include in propertyMap
     def property_names
       hidden_properties.keys
     end
@@ -115,44 +98,14 @@ module Broadlistening
     private
 
     def validate!
-      raise ConfigurationError, "Unknown provider: #{provider}" unless SUPPORTED_PROVIDERS.include?(provider)
-      raise ConfigurationError, "API key is required" if provider != "local" && (api_key.nil? || api_key.empty?)
-      raise ConfigurationError, "Azure requires api_base_url" if provider == "azure" && (api_base_url.nil? || api_base_url.empty?)
+      if @provider_obj.requires_api_key? && (api_key.nil? || api_key.empty?)
+        raise ConfigurationError, "API key is required"
+      end
+      if @provider_obj.requires_base_url? && (api_base_url.nil? || api_base_url.empty?)
+        raise ConfigurationError, "Azure requires api_base_url"
+      end
       raise ConfigurationError, "cluster_nums must have at least 2 levels" if cluster_nums.size < 2
       raise ConfigurationError, "cluster_nums must be sorted ascending" unless cluster_nums == cluster_nums.sort
-    end
-
-    def api_key_from_env
-      case @provider
-      when "openai" then ENV.fetch("OPENAI_API_KEY", nil)
-      when "azure" then ENV.fetch("AZURE_OPENAI_API_KEY", nil)
-      when "gemini" then ENV.fetch("GEMINI_API_KEY", nil)
-      when "openrouter" then ENV.fetch("OPENROUTER_API_KEY", nil)
-      when "local" then "not-needed"
-      end
-    end
-
-    def api_base_url_from_env
-      case @provider
-      when "azure" then ENV.fetch("AZURE_OPENAI_URI", nil)
-      when "gemini" then PROVIDER_URI_BASE["gemini"]
-      when "openrouter" then PROVIDER_URI_BASE["openrouter"]
-      when "local" then "http://#{@local_llm_address || DEFAULT_LOCAL_LLM_ADDRESS}/v1"
-      end
-    end
-
-    def default_model_for_provider
-      case @provider
-      when "gemini" then "gemini-2.0-flash"
-      else DEFAULT_MODEL
-      end
-    end
-
-    def default_embedding_model_for_provider
-      case @provider
-      when "gemini" then "text-embedding-004"
-      else DEFAULT_EMBEDDING_MODEL
-      end
     end
 
     def default_prompts

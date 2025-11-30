@@ -8,7 +8,12 @@ module Broadlistening
 
       def initialize(config)
         @config = config
-        @client = build_client
+        @provider = Provider.new(config.provider, local_llm_address: config.local_llm_address)
+        @client = @provider.build_openai_client(
+          api_key: config.api_key,
+          base_url: config.api_base_url,
+          azure_api_version: config.azure_api_version
+        )
       end
 
       def chat(system:, user:, json_mode: false)
@@ -31,27 +36,6 @@ module Broadlistening
       end
 
       private
-
-      def build_client
-        case @config.provider
-        when "openai"
-          OpenAI::Client.new(access_token: @config.api_key)
-        when "azure"
-          OpenAI::Client.new(
-            access_token: @config.api_key,
-            uri_base: @config.api_base_url,
-            api_type: :azure,
-            api_version: @config.azure_api_version
-          )
-        when "gemini", "openrouter", "local"
-          OpenAI::Client.new(
-            access_token: @config.api_key,
-            uri_base: @config.api_base_url
-          )
-        else
-          raise ConfigurationError, "Unknown provider: #{@config.provider}"
-        end
-      end
 
       def build_chat_params(system, user, json_mode)
         params = {

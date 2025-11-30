@@ -9,6 +9,7 @@ require "json"
 require "umappp"
 
 require_relative "broadlistening/version"
+require_relative "broadlistening/provider"
 require_relative "broadlistening/config"
 require_relative "broadlistening/spec_loader"
 require_relative "broadlistening/status"
