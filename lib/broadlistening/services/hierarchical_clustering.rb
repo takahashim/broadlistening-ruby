@@ -58,7 +58,7 @@ module Broadlistening
           clusters[i] = {
             centroid: @centroids[i, true].to_a,
             size: @labels.count(i),
-            members: [i]
+            members: [ i ]
           }
         end
         clusters
@@ -66,7 +66,7 @@ module Broadlistening
 
       def find_ward_closest_pair(clusters)
         min_dist = Float::INFINITY
-        min_pair = [nil, nil]
+        min_pair = [ nil, nil ]
 
         cluster_ids = clusters.keys
         cluster_ids.each_with_index do |c1_id, i|
@@ -74,7 +74,7 @@ module Broadlistening
             dist = ward_distance(clusters[c1_id], clusters[c2_id])
             if dist < min_dist
               min_dist = dist
-              min_pair = [c1_id, c2_id]
+              min_pair = [ c1_id, c2_id ]
             end
           end
         end
@@ -111,8 +111,8 @@ module Broadlistening
         end
 
         # マージしたクラスタを作成（小さいIDを使用）
-        merged_id = [c1_id, c2_id].min
-        removed_id = [c1_id, c2_id].max
+        merged_id = [ c1_id, c2_id ].min
+        removed_id = [ c1_id, c2_id ].max
 
         clusters[merged_id] = {
           centroid: new_centroid,

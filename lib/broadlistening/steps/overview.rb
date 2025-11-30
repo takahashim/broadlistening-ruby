@@ -4,13 +4,13 @@ module Broadlistening
   module Steps
     class Overview < BaseStep
       def execute
-        labels = context[:labels]
-        return context.merge(overview: "") if labels.empty?
+        return context if context.labels.empty?
 
-        top_labels = find_top_level_labels(labels)
+        top_labels = find_top_level_labels(context.labels)
         overview = generate_overview(top_labels)
 
-        context.merge(overview: overview)
+        context.overview = overview
+        context
       end
 
       private

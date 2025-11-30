@@ -5,7 +5,7 @@ RSpec.describe "Step Notifications" do
     {
       api_key: "test-api-key",
       model: "gpt-4o-mini",
-      cluster_nums: [2, 5],
+      cluster_nums: [ 2, 5 ],
       workers: 2
     }
   end
@@ -19,10 +19,16 @@ RSpec.describe "Step Notifications" do
   describe Broadlistening::Steps::Extraction do
     let(:comments) do
       [
-        { id: "1", body: "コメント1", proposal_id: "123" },
-        { id: "2", body: "コメント2", proposal_id: "123" },
-        { id: "3", body: "コメント3", proposal_id: "123" }
+        Broadlistening::Comment.new(id: "1", body: "コメント1", proposal_id: "123"),
+        Broadlistening::Comment.new(id: "2", body: "コメント2", proposal_id: "123"),
+        Broadlistening::Comment.new(id: "3", body: "コメント3", proposal_id: "123")
       ]
+    end
+
+    let(:context) do
+      ctx = Broadlistening::Context.new
+      ctx.comments = comments
+      ctx
     end
 
     it "emits progress events for each comment processed" do
@@ -31,9 +37,8 @@ RSpec.describe "Step Notifications" do
         events << payload
       end
 
-      context = { comments: comments }
       step = described_class.new(config, context)
-      allow(step).to receive(:extract_arguments_from_comment).and_return(["opinion"])
+      allow(step).to receive(:extract_arguments_from_comment).and_return([ "opinion" ])
 
       step.execute
 
@@ -50,24 +55,29 @@ RSpec.describe "Step Notifications" do
         events << payload
       end
 
-      context = { comments: comments }
       step = described_class.new(config, context)
-      allow(step).to receive(:extract_arguments_from_comment).and_return(["opinion"])
+      allow(step).to receive(:extract_arguments_from_comment).and_return([ "opinion" ])
 
       step.execute
 
       # Due to parallel processing, order may vary, but all percentages should be present
       percentages = events.map { |e| e[:percentage] }.sort
-      expect(percentages).to eq([33.3, 66.7, 100.0])
+      expect(percentages).to eq([ 33.3, 66.7, 100.0 ])
     end
   end
 
   describe Broadlistening::Steps::Embedding do
     let(:arguments) do
       [
-        { arg_id: "A1_0", argument: "意見1" },
-        { arg_id: "A2_0", argument: "意見2" }
+        Broadlistening::Argument.new(arg_id: "A1_0", argument: "意見1", comment_id: "1"),
+        Broadlistening::Argument.new(arg_id: "A2_0", argument: "意見2", comment_id: "2")
       ]
+    end
+
+    let(:context) do
+      ctx = Broadlistening::Context.new
+      ctx.arguments = arguments
+      ctx
     end
 
     it "emits progress events for each batch" do
@@ -76,12 +86,11 @@ RSpec.describe "Step Notifications" do
         events << payload
       end
 
-      context = { arguments: arguments }
       step = described_class.new(config, context)
 
       mock_client = instance_double(Broadlistening::Services::LlmClient)
       allow(step).to receive(:llm_client).and_return(mock_client)
-      allow(mock_client).to receive(:embed).and_return([[0.1, 0.2], [0.3, 0.4]])
+      allow(mock_client).to receive(:embed).and_return([ [ 0.1, 0.2 ], [ 0.3, 0.4 ] ])
 
       step.execute
 
@@ -94,17 +103,24 @@ RSpec.describe "Step Notifications" do
   describe Broadlistening::Steps::InitialLabelling do
     let(:arguments) do
       [
-        { arg_id: "A1_0", argument: "意見1", cluster_ids: %w[0 1_0 2_0] },
-        { arg_id: "A2_0", argument: "意見2", cluster_ids: %w[0 1_0 2_1] },
-        { arg_id: "A3_0", argument: "意見3", cluster_ids: %w[0 1_1 2_2] }
+        Broadlistening::Argument.new(arg_id: "A1_0", argument: "意見1", comment_id: "1", cluster_ids: %w[0 1_0 2_0]),
+        Broadlistening::Argument.new(arg_id: "A2_0", argument: "意見2", comment_id: "2", cluster_ids: %w[0 1_0 2_1]),
+        Broadlistening::Argument.new(arg_id: "A3_0", argument: "意見3", comment_id: "3", cluster_ids: %w[0 1_1 2_2])
       ]
     end
 
     let(:cluster_results) do
       {
-        1 => [0, 0, 1],
-        2 => [0, 1, 2]
+        1 => [ 0, 0, 1 ],
+        2 => [ 0, 1, 2 ]
       }
+    end
+
+    let(:context) do
+      ctx = Broadlistening::Context.new
+      ctx.arguments = arguments
+      ctx.cluster_results = cluster_results
+      ctx
     end
 
     it "emits progress events for each cluster labeled" do
@@ -113,7 +129,6 @@ RSpec.describe "Step Notifications" do
         events << payload
       end
 
-      context = { arguments: arguments, cluster_results: cluster_results }
       step = described_class.new(config, context)
 
       mock_client = instance_double(Broadlistening::Services::LlmClient)
@@ -130,16 +145,16 @@ RSpec.describe "Step Notifications" do
   describe Broadlistening::Steps::MergeLabelling do
     let(:arguments) do
       [
-        { arg_id: "A1_0", argument: "意見1", cluster_ids: %w[0 1_0 2_0] },
-        { arg_id: "A2_0", argument: "意見2", cluster_ids: %w[0 1_0 2_1] },
-        { arg_id: "A3_0", argument: "意見3", cluster_ids: %w[0 1_1 2_2] }
+        Broadlistening::Argument.new(arg_id: "A1_0", argument: "意見1", comment_id: "1", cluster_ids: %w[0 1_0 2_0]),
+        Broadlistening::Argument.new(arg_id: "A2_0", argument: "意見2", comment_id: "2", cluster_ids: %w[0 1_0 2_1]),
+        Broadlistening::Argument.new(arg_id: "A3_0", argument: "意見3", comment_id: "3", cluster_ids: %w[0 1_1 2_2])
       ]
     end
 
     let(:cluster_results) do
       {
-        1 => [0, 0, 1],
-        2 => [0, 1, 2]
+        1 => [ 0, 0, 1 ],
+        2 => [ 0, 1, 2 ]
       }
     end
 
@@ -151,17 +166,20 @@ RSpec.describe "Step Notifications" do
       }
     end
 
+    let(:context) do
+      ctx = Broadlistening::Context.new
+      ctx.arguments = arguments
+      ctx.cluster_results = cluster_results
+      ctx.initial_labels = initial_labels
+      ctx
+    end
+
     it "emits progress events with level information" do
       events = []
       @subscription = ActiveSupport::Notifications.subscribe("progress.broadlistening") do |*, payload|
         events << payload
       end
 
-      context = {
-        arguments: arguments,
-        cluster_results: cluster_results,
-        initial_labels: initial_labels
-      }
       step = described_class.new(config, context)
 
       mock_client = instance_double(Broadlistening::Services::LlmClient)
@@ -187,6 +205,8 @@ RSpec.describe "Step Notifications" do
       end
     end
 
+    let(:context) { Broadlistening::Context.new }
+
     describe "#notify_progress" do
       it "handles zero total gracefully" do
         events = []
@@ -194,7 +214,7 @@ RSpec.describe "Step Notifications" do
           events << payload
         end
 
-        step = TestStep.new(config, {})
+        step = TestStep.new(config, context)
         step.test_params = { current: 0, total: 0 }
         step.execute
 
@@ -207,7 +227,7 @@ RSpec.describe "Step Notifications" do
           events << payload
         end
 
-        step = TestStep.new(config, {})
+        step = TestStep.new(config, context)
         step.test_params = { current: 1, total: 2, message: "processing batch 1" }
         step.execute
 
@@ -220,7 +240,7 @@ RSpec.describe "Step Notifications" do
           events << payload
         end
 
-        step = TestStep.new(config, {})
+        step = TestStep.new(config, context)
         step.test_params = { current: 3, total: 4 }
         step.execute
 

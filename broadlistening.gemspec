@@ -5,18 +5,18 @@ require_relative "lib/broadlistening/version"
 Gem::Specification.new do |spec|
   spec.name = "broadlistening"
   spec.version = Broadlistening::VERSION
-  spec.authors = ["takahashim"]
-  spec.email = ["takahashimm@gmail.com"]
+  spec.authors = [ "takahashim" ]
+  spec.email = [ "takahashimm@gmail.com" ]
 
   spec.summary = "Broadlistening pipeline for opinion analysis"
   spec.description = "A Ruby implementation of the Broadlistening pipeline for clustering and analyzing public comments using LLM"
-  spec.homepage = "https://github.com/digitaldemocracy2030/kouchou-ai"
-  spec.license = "MIT"
+  spec.homepage = "https://github.com/takahashim/broadlistening-ruby"
+  spec.license = "AGPL-3.0"
   spec.required_ruby_version = ">= 3.1.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/digitaldemocracy2030/kouchou-ai"
-  spec.metadata["changelog_uri"] = "https://github.com/digitaldemocracy2030/kouchou-ai/blob/main/CHANGELOG.md"
+  spec.metadata["source_code_uri"] = "https://github.com/takahashim/broadlistening-ruby"
+  spec.metadata["changelog_uri"] = "https://github.com/takahashim/broadlistening-ruby/blob/main/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
   # Specify which files should be added to the gem when it is released.
@@ -30,15 +30,15 @@ Gem::Specification.new do |spec|
   end
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
-  spec.require_paths = ["lib"]
+  spec.require_paths = [ "lib" ]
 
   # Runtime dependencies
   spec.add_dependency "activesupport", ">= 7.0"
+  spec.add_dependency "csv", ">= 3.0"
   spec.add_dependency "numo-narray", "~> 0.9"
-  spec.add_dependency "numo-linalg", "~> 0.1"
-  spec.add_dependency "ruby-openai", "~> 7.0"
   spec.add_dependency "parallel", "~> 1.20"
-
-  # Optional dependencies (install separately if needed)
-  # spec.add_dependency "umappp", "~> 0.1"       # For UMAP dimensionality reduction (requires C++ compiler)
+  spec.add_dependency "rice", "~> 4.6.0"
+  spec.add_dependency "ruby-openai", "~> 7.0"
+  spec.add_dependency "umappp", "~> 0.2"
+  spec.add_dependency "json_schemer", "~> 2.0"
 end

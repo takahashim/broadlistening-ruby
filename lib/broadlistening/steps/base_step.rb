@@ -5,9 +5,13 @@ module Broadlistening
     class BaseStep
       attr_reader :config, :context
 
+      # @param config [Config] Pipeline configuration
+      # @param context [Context] Pipeline context
       def initialize(config, context)
         @config = config
         @context = context
+
+        raise ArgumentError, "context must be a Context, got #{context.class}" unless context.is_a?(Context)
       end
 
       def execute

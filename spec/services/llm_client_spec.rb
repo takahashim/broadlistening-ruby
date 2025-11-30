@@ -138,7 +138,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
           .with(
             body: hash_including(
               "model" => "text-embedding-3-small",
-              "input" => ["Hello world"]
+              "input" => [ "Hello world" ]
             ),
             headers: { "Authorization" => "Bearer #{api_key}" }
           )
@@ -146,7 +146,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
             status: 200,
             body: {
               "data" => [
-                { "index" => 0, "embedding" => [0.1, 0.2, 0.3] }
+                { "index" => 0, "embedding" => [ 0.1, 0.2, 0.3 ] }
               ]
             }.to_json,
             headers: { "Content-Type" => "application/json" }
@@ -155,7 +155,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
 
       it "returns embeddings for the text" do
         result = client.embed("Hello world")
-        expect(result).to eq([[0.1, 0.2, 0.3]])
+        expect(result).to eq([ [ 0.1, 0.2, 0.3 ] ])
       end
     end
 
@@ -165,15 +165,15 @@ RSpec.describe Broadlistening::Services::LlmClient do
           .with(
             body: hash_including(
               "model" => "text-embedding-3-small",
-              "input" => ["Hello", "World"]
+              "input" => [ "Hello", "World" ]
             )
           )
           .to_return(
             status: 200,
             body: {
               "data" => [
-                { "index" => 1, "embedding" => [0.4, 0.5, 0.6] },
-                { "index" => 0, "embedding" => [0.1, 0.2, 0.3] }
+                { "index" => 1, "embedding" => [ 0.4, 0.5, 0.6 ] },
+                { "index" => 0, "embedding" => [ 0.1, 0.2, 0.3 ] }
               ]
             }.to_json,
             headers: { "Content-Type" => "application/json" }
@@ -181,8 +181,8 @@ RSpec.describe Broadlistening::Services::LlmClient do
       end
 
       it "returns embeddings sorted by index" do
-        result = client.embed(["Hello", "World"])
-        expect(result).to eq([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+        result = client.embed([ "Hello", "World" ])
+        expect(result).to eq([ [ 0.1, 0.2, 0.3 ], [ 0.4, 0.5, 0.6 ] ])
       end
     end
 

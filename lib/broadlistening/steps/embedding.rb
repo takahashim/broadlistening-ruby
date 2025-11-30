@@ -6,19 +6,18 @@ module Broadlistening
       BATCH_SIZE = 1000
 
       def execute
-        arguments = context[:arguments]
-        return context if arguments.empty?
+        return context if context.arguments.empty?
 
-        embeddings = compute_embeddings(arguments)
-        attach_embeddings_to_arguments(arguments, embeddings)
+        embeddings = compute_embeddings(context.arguments)
+        attach_embeddings_to_arguments(context.arguments, embeddings)
 
-        context.merge(arguments: arguments)
+        context
       end
 
       private
 
       def compute_embeddings(arguments)
-        texts = arguments.map { |a| a[:argument] }
+        texts = arguments.map(&:argument)
         embeddings = []
         total_batches = (texts.size.to_f / BATCH_SIZE).ceil
 
@@ -33,7 +32,7 @@ module Broadlistening
 
       def attach_embeddings_to_arguments(arguments, embeddings)
         arguments.each_with_index do |arg, idx|
-          arg[:embedding] = embeddings[idx]
+          arg.embedding = embeddings[idx]
         end
       end
     end

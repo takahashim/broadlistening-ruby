@@ -6,18 +6,15 @@ module Broadlistening
       SAMPLING_NUM = 30
 
       def execute
-        arguments = context[:arguments]
-        cluster_results = context[:cluster_results]
-        return context.merge(initial_labels: {}) if arguments.empty? || cluster_results.empty?
+        return context if context.arguments.empty? || context.cluster_results.empty?
 
-        max_level = cluster_results.keys.max
-        cluster_ids = cluster_results[max_level].uniq
+        max_level = context.cluster_results.keys.max
+        cluster_ids = context.cluster_results[max_level].uniq
 
-        labels = label_clusters_in_parallel(arguments, max_level, cluster_ids)
+        labels = label_clusters_in_parallel(context.arguments, max_level, cluster_ids)
 
-        context.merge(
-          initial_labels: labels.to_h { |l| [l[:cluster_id], l] }
-        )
+        context.initial_labels = labels.to_h { |l| [ l[:cluster_id], l ] }
+        context
       end
 
       private
@@ -39,7 +36,7 @@ module Broadlistening
         cluster_args = filter_arguments_by_cluster(arguments, level, cluster_id)
         sampled = sample_arguments(cluster_args)
 
-        input = sampled.map { |a| a[:argument] }.join("\n")
+        input = sampled.map(&:argument).join("\n")
 
         response = llm_client.chat(
           system: config.prompts[:initial_labelling],
@@ -55,11 +52,11 @@ module Broadlistening
 
       def filter_arguments_by_cluster(arguments, level, cluster_id)
         target_cluster_id = "#{level}_#{cluster_id}"
-        arguments.select { |arg| arg[:cluster_ids].include?(target_cluster_id) }
+        arguments.select { |arg| arg.in_cluster?(target_cluster_id) }
       end
 
       def sample_arguments(cluster_args)
-        sample_size = [SAMPLING_NUM, cluster_args.size].min
+        sample_size = [ SAMPLING_NUM, cluster_args.size ].min
         cluster_args.sample(sample_size)
       end
 

@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+require "csv"
+
 RSpec.describe Broadlistening::Steps::Aggregation do
   let(:config_options) do
     {
       api_key: "test-api-key",
       model: "gpt-4o-mini",
-      cluster_nums: [2, 5]
+      cluster_nums: [ 2, 5 ]
     }
   end
 
@@ -13,17 +16,17 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
   let(:comments) do
     [
-      { id: "1", body: "環境問題への対策が必要です", proposal_id: "123" },
-      { id: "2", body: "公共交通機関の充実を希望します", proposal_id: "123" },
-      { id: "3", body: "教育の質を向上させるべき", proposal_id: "123" }
+      Broadlistening::Comment.new(id: "1", body: "環境問題への対策が必要です", proposal_id: "123"),
+      Broadlistening::Comment.new(id: "2", body: "公共交通機関の充実を希望します", proposal_id: "123"),
+      Broadlistening::Comment.new(id: "3", body: "教育の質を向上させるべき", proposal_id: "123")
     ]
   end
 
   let(:arguments) do
     [
-      { arg_id: "A1_0", argument: "環境問題への対策が必要", comment_id: "1", x: 0.5, y: 0.3, cluster_ids: %w[0 1_0 2_0] },
-      { arg_id: "A2_0", argument: "公共交通機関の充実", comment_id: "2", x: 0.7, y: 0.2, cluster_ids: %w[0 1_0 2_1] },
-      { arg_id: "A3_0", argument: "教育の質向上", comment_id: "3", x: -0.3, y: 0.8, cluster_ids: %w[0 1_1 2_2] }
+      Broadlistening::Argument.new(arg_id: "A1_0", argument: "環境問題への対策が必要", comment_id: "1", x: 0.5, y: 0.3, cluster_ids: %w[0 1_0 2_0]),
+      Broadlistening::Argument.new(arg_id: "A2_0", argument: "公共交通機関の充実", comment_id: "2", x: 0.7, y: 0.2, cluster_ids: %w[0 1_0 2_1]),
+      Broadlistening::Argument.new(arg_id: "A3_0", argument: "教育の質向上", comment_id: "3", x: -0.3, y: 0.8, cluster_ids: %w[0 1_1 2_2])
     ]
   end
 
@@ -39,25 +42,28 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
   let(:cluster_results) do
     {
-      1 => [0, 0, 1],
-      2 => [0, 1, 2]
+      1 => [ 0, 0, 1 ],
+      2 => [ 0, 1, 2 ]
     }
   end
 
   let(:context) do
-    {
-      comments: comments,
-      arguments: arguments,
-      labels: labels,
-      cluster_results: cluster_results,
-      overview: "テスト概要"
-    }
+    ctx = Broadlistening::Context.new
+    ctx.comments = comments
+    ctx.arguments = arguments
+    ctx.labels = labels
+    ctx.cluster_results = cluster_results
+    ctx.overview = "テスト概要"
+    ctx
   end
 
   subject(:step) { described_class.new(config, context) }
 
   describe "#execute" do
-    let(:result) { step.execute[:result] }
+    let(:result) do
+      step.execute
+      context.result
+    end
 
     describe "top-level structure" do
       it "includes all required fields" do
@@ -123,14 +129,17 @@ RSpec.describe Broadlistening::Steps::Aggregation do
       end
 
       it "extracts comment_id from arg_id when not provided" do
-        arguments_without_comment_id = arguments.map { |a| a.except(:comment_id) }
-        context_without_comment_id = context.merge(arguments: arguments_without_comment_id)
-        step_without_comment_id = described_class.new(config, context_without_comment_id)
-        result = step_without_comment_id.execute[:result]
+        arguments_without_comment_id = [
+          Broadlistening::Argument.new(arg_id: "A1_0", argument: "test1", comment_id: nil, x: 0.5, y: 0.3, cluster_ids: %w[0 1_0]),
+          Broadlistening::Argument.new(arg_id: "A2_0", argument: "test2", comment_id: nil, x: 0.7, y: 0.2, cluster_ids: %w[0 1_0]),
+          Broadlistening::Argument.new(arg_id: "A3_0", argument: "test3", comment_id: nil, x: -0.3, y: 0.8, cluster_ids: %w[0 1_1])
+        ]
+        context.arguments = arguments_without_comment_id
+        step.execute
 
-        expect(result[:arguments].first[:comment_id]).to eq(1)
-        expect(result[:arguments][1][:comment_id]).to eq(2)
-        expect(result[:arguments][2][:comment_id]).to eq(3)
+        expect(context.result[:arguments].first[:comment_id]).to eq(1)
+        expect(context.result[:arguments][1][:comment_id]).to eq(2)
+        expect(context.result[:arguments][2][:comment_id]).to eq(3)
       end
     end
 
@@ -227,19 +236,20 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
       it "only includes comments with extracted arguments" do
         # Add a comment without arguments
-        comments_with_extra = comments + [{ id: "4", body: "空のコメント", proposal_id: "123" }]
-        context_with_extra = context.merge(comments: comments_with_extra)
-        step_with_extra = described_class.new(config, context_with_extra)
-        result = step_with_extra.execute[:result]
+        context.comments << Broadlistening::Comment.new(id: "4", body: "空のコメント", proposal_id: "123")
+        step.execute
 
-        expect(result[:comments]).to have_key("1")
-        expect(result[:comments]).not_to have_key("4")
+        expect(context.result[:comments]).to have_key("1")
+        expect(context.result[:comments]).not_to have_key("4")
       end
     end
   end
 
   describe "compatibility with Kouchou-AI output format" do
-    let(:result) { step.execute[:result] }
+    let(:result) do
+      step.execute
+      context.result
+    end
 
     it "matches the expected JSON structure" do
       # Top level keys should match Python output
@@ -257,6 +267,299 @@ RSpec.describe Broadlistening::Steps::Aggregation do
       cluster = result[:clusters].find { |c| c[:level] == 1 }
       expected_keys = %i[level id label takeaway value parent density_rank_percentile]
       expect(cluster.keys).to match_array(expected_keys)
+    end
+  end
+
+  describe "attributes support" do
+    let(:arguments_with_attributes) do
+      [
+        Broadlistening::Argument.new(
+          arg_id: "A1_0",
+          argument: "環境問題への対策が必要",
+          comment_id: "1",
+          x: 0.5,
+          y: 0.3,
+          cluster_ids: %w[0 1_0 2_0],
+          attributes: { "age" => "30代", "region" => "東京" }
+        ),
+        Broadlistening::Argument.new(
+          arg_id: "A2_0",
+          argument: "公共交通機関の充実",
+          comment_id: "2",
+          x: 0.7,
+          y: 0.2,
+          cluster_ids: %w[0 1_0 2_1]
+        )
+      ]
+    end
+
+    before do
+      context.arguments = arguments_with_attributes
+    end
+
+    it "includes attributes when present" do
+      step.execute
+      arg_with_attrs = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+      expect(arg_with_attrs[:attributes]).to eq({ "age" => "30代", "region" => "東京" })
+    end
+
+    it "does not include attributes key when not present" do
+      step.execute
+      arg_without_attrs = context.result[:arguments].find { |a| a[:arg_id] == "A2_0" }
+      expect(arg_without_attrs).not_to have_key(:attributes)
+    end
+  end
+
+  describe "propertyMap support" do
+    let(:config_with_properties) do
+      Broadlistening::Config.new(config_options.merge(
+        hidden_properties: {
+          "source" => [ "X API" ],
+          "age" => [ 20, 25 ]
+        }
+      ))
+    end
+
+    let(:arguments_with_properties) do
+      [
+        Broadlistening::Argument.new(
+          arg_id: "A1_0",
+          argument: "環境問題への対策が必要",
+          comment_id: "1",
+          x: 0.5,
+          y: 0.3,
+          cluster_ids: %w[0 1_0 2_0],
+          properties: { "source" => "twitter", "age" => 35 }
+        ),
+        Broadlistening::Argument.new(
+          arg_id: "A2_0",
+          argument: "公共交通機関の充実",
+          comment_id: "2",
+          x: 0.7,
+          y: 0.2,
+          cluster_ids: %w[0 1_0 2_1],
+          properties: { "source" => "facebook", "age" => nil }
+        ),
+        Broadlistening::Argument.new(
+          arg_id: "A3_0",
+          argument: "教育の質向上",
+          comment_id: "3",
+          x: -0.3,
+          y: 0.8,
+          cluster_ids: %w[0 1_1 2_2]
+        )
+      ]
+    end
+
+    let(:step_with_properties) { described_class.new(config_with_properties, context) }
+
+    before do
+      context.arguments = arguments_with_properties
+    end
+
+    it "builds propertyMap with property names as keys" do
+      step_with_properties.execute
+      property_map = context.result[:propertyMap]
+      expect(property_map.keys).to match_array(%w[source age])
+    end
+
+    it "maps arg_id to property values" do
+      step_with_properties.execute
+      property_map = context.result[:propertyMap]
+      expect(property_map["source"]["A1_0"]).to eq("twitter")
+      expect(property_map["source"]["A2_0"]).to eq("facebook")
+      expect(property_map["age"]["A1_0"]).to eq(35)
+    end
+
+    it "handles nil property values" do
+      step_with_properties.execute
+      property_map = context.result[:propertyMap]
+      expect(property_map["age"]["A2_0"]).to be_nil
+    end
+
+    it "does not include arguments without properties in propertyMap" do
+      step_with_properties.execute
+      property_map = context.result[:propertyMap]
+      expect(property_map["source"]).not_to have_key("A3_0")
+      expect(property_map["age"]).not_to have_key("A3_0")
+    end
+
+    context "when no hidden_properties configured" do
+      it "returns empty propertyMap" do
+        step.execute
+        expect(context.result[:propertyMap]).to eq({})
+      end
+    end
+  end
+
+  describe "url support" do
+    let(:arguments_with_url) do
+      [
+        Broadlistening::Argument.new(
+          arg_id: "A1_0",
+          argument: "環境問題への対策が必要",
+          comment_id: "1",
+          x: 0.5,
+          y: 0.3,
+          cluster_ids: %w[0 1_0 2_0],
+          url: "https://example.com/comment/1"
+        ),
+        Broadlistening::Argument.new(
+          arg_id: "A2_0",
+          argument: "公共交通機関の充実",
+          comment_id: "2",
+          x: 0.7,
+          y: 0.2,
+          cluster_ids: %w[0 1_0 2_1]
+        )
+      ]
+    end
+
+    before do
+      context.arguments = arguments_with_url
+    end
+
+    context "when enable_source_link is true" do
+      let(:config_with_source_link) do
+        Broadlistening::Config.new(config_options.merge(enable_source_link: true))
+      end
+      let(:step_with_source_link) { described_class.new(config_with_source_link, context) }
+
+      it "includes url when present" do
+        step_with_source_link.execute
+        arg_with_url = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+        expect(arg_with_url[:url]).to eq("https://example.com/comment/1")
+      end
+
+      it "does not include url key when not present" do
+        step_with_source_link.execute
+        arg_without_url = context.result[:arguments].find { |a| a[:arg_id] == "A2_0" }
+        expect(arg_without_url).not_to have_key(:url)
+      end
+    end
+
+    context "when enable_source_link is false (default)" do
+      it "does not include url even when present in argument" do
+        step.execute
+        arg_with_url = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+        expect(arg_with_url).not_to have_key(:url)
+      end
+    end
+  end
+
+  describe "is_pubcom CSV export" do
+    let(:output_dir) { Dir.mktmpdir }
+    let(:csv_path) { File.join(output_dir, "final_result_with_comments.csv") }
+
+    after do
+      FileUtils.rm_rf(output_dir)
+    end
+
+    before do
+      context.output_dir = output_dir
+    end
+
+    context "when is_pubcom is true" do
+      let(:config_with_pubcom) do
+        Broadlistening::Config.new(config_options.merge(is_pubcom: true))
+      end
+      let(:step_with_pubcom) { described_class.new(config_with_pubcom, context) }
+
+      it "exports CSV file" do
+        step_with_pubcom.execute
+        expect(File.exist?(csv_path)).to be true
+      end
+
+      it "includes correct headers" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        expect(csv.headers).to include("comment_id", "original_comment", "arg_id", "argument", "category_id", "category", "x", "y")
+      end
+
+      it "includes all arguments in CSV" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        expect(csv.size).to eq(3)
+      end
+
+      it "includes original comment body" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        row = csv.find { |r| r["arg_id"] == "A1_0" }
+        expect(row["original_comment"]).to eq("環境問題への対策が必要です")
+      end
+
+      it "includes category from level 1 cluster" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        row = csv.find { |r| r["arg_id"] == "A1_0" }
+        expect(row["category_id"]).to eq("1_0")
+        expect(row["category"]).to eq("インフラ")
+      end
+
+      it "includes x and y coordinates" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        row = csv.find { |r| r["arg_id"] == "A1_0" }
+        expect(row["x"].to_f).to eq(0.5)
+        expect(row["y"].to_f).to eq(0.3)
+      end
+    end
+
+    context "when is_pubcom is true with attributes" do
+      let(:config_with_pubcom) do
+        Broadlistening::Config.new(config_options.merge(is_pubcom: true))
+      end
+      let(:step_with_pubcom) { described_class.new(config_with_pubcom, context) }
+
+      let(:comments_with_attrs) do
+        [
+          Broadlistening::Comment.new(id: "1", body: "環境問題への対策が必要です", proposal_id: "123", attributes: { "age" => "30代", "region" => "東京" }),
+          Broadlistening::Comment.new(id: "2", body: "公共交通機関の充実を希望します", proposal_id: "123"),
+          Broadlistening::Comment.new(id: "3", body: "教育の質を向上させるべき", proposal_id: "123")
+        ]
+      end
+
+      before do
+        context.comments = comments_with_attrs
+      end
+
+      it "includes attribute columns in headers" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        expect(csv.headers).to include("attribute_age", "attribute_region")
+      end
+
+      it "includes attribute values in rows" do
+        step_with_pubcom.execute
+        csv = CSV.read(csv_path, headers: true)
+        row = csv.find { |r| r["arg_id"] == "A1_0" }
+        expect(row["attribute_age"]).to eq("30代")
+        expect(row["attribute_region"]).to eq("東京")
+      end
+    end
+
+    context "when is_pubcom is false (default)" do
+      it "does not export CSV file" do
+        step.execute
+        expect(File.exist?(csv_path)).to be false
+      end
+    end
+
+    context "when output_dir is not set" do
+      let(:config_with_pubcom) do
+        Broadlistening::Config.new(config_options.merge(is_pubcom: true))
+      end
+      let(:step_with_pubcom) { described_class.new(config_with_pubcom, context) }
+
+      before do
+        context.output_dir = nil
+      end
+
+      it "does not export CSV file" do
+        step_with_pubcom.execute
+        expect(File.exist?(csv_path)).to be false
+      end
     end
   end
 end

@@ -3,76 +3,43 @@
 module Broadlistening
   module Steps
     class Clustering < BaseStep
-      MIN_SAMPLES_FOR_UMAP = 15
-
       def execute
-        arguments = context[:arguments]
-        return context.merge(cluster_results: {}) if arguments.empty?
+        return context if context.arguments.empty?
 
-        embeddings = build_embeddings_matrix(arguments)
+        embeddings = build_embeddings_matrix(context.arguments)
         umap_coords = perform_umap(embeddings)
         cluster_results = perform_hierarchical_clustering(umap_coords)
 
-        assign_cluster_info_to_arguments(arguments, umap_coords, cluster_results)
+        assign_cluster_info_to_arguments(context.arguments, umap_coords, cluster_results)
 
-        context.merge(
-          arguments: arguments,
-          cluster_results: cluster_results,
-          umap_coords: umap_coords
-        )
+        context.cluster_results = cluster_results
+        context.umap_coords = umap_coords
+        context
       end
 
       private
 
       def build_embeddings_matrix(arguments)
-        Numo::DFloat.cast(arguments.map { |a| a[:embedding] })
+        Numo::DFloat.cast(arguments.map(&:embedding))
       end
 
       def perform_umap(embeddings)
         n_samples = embeddings.shape[0]
+        num_neighbors = [ 15, n_samples - 1 ].min
 
-        if n_samples < MIN_SAMPLES_FOR_UMAP || !umap_available?
-          return simple_projection(embeddings)
-        end
+        # Convert to SFloat for umappp (required format)
+        embeddings_sfloat = Numo::SFloat.cast(embeddings)
 
-        n_neighbors = [15, n_samples - 1].min
-        umap = Umappp::Umap.new(
-          n_neighbors: n_neighbors,
-          n_components: 2,
-          random_state: 42
+        # Umappp.run returns 2D coordinates
+        result = Umappp.run(
+          embeddings_sfloat,
+          ndim: 2,
+          num_neighbors: num_neighbors,
+          seed: 42
         )
-        umap.fit_transform(embeddings)
-      end
 
-      def umap_available?
-        defined?(Umappp::Umap)
-      end
-
-      def simple_projection(embeddings)
-        # PCA using SVD via numo-linalg
-        # This is a fallback when UMAP is not available
-        n_samples = embeddings.shape[0]
-
-        return Numo::DFloat.zeros(n_samples, 2) if n_samples == 0
-
-        # Center the data
-        mean = embeddings.mean(axis: 0)
-        centered = embeddings - mean
-
-        # Perform SVD for PCA
-        # For PCA, we need the right singular vectors (V) corresponding to largest singular values
-        u, s, vt = Numo::Linalg.svd(centered, full_matrices: false)
-
-        # Project onto first 2 principal components
-        # The projection is X_centered @ V[:, :2] = U[:, :2] @ S[:2]
-        n_components = [2, s.size].min
-        result = Numo::DFloat.zeros(n_samples, 2)
-
-        n_components.times do |i|
-          result[true, i] = u[true, i] * s[i]
-        end
-
-        result
+        # Convert back to DFloat for consistency
+        Numo::DFloat.cast(result)
       end
 
       def perform_hierarchical_clustering(umap_coords)
@@ -80,7 +47,7 @@ module Broadlistening
         n_samples = umap_coords.shape[0]
 
         # Adjust cluster numbers if we have fewer samples
-        adjusted_cluster_nums = cluster_nums.map { |n| [n, n_samples].min }.uniq
+        adjusted_cluster_nums = cluster_nums.map { |n| [ n, n_samples ].min }.uniq
 
         max_clusters = adjusted_cluster_nums.last
 
@@ -115,14 +82,14 @@ module Broadlistening
 
       def assign_cluster_info_to_arguments(arguments, umap_coords, cluster_results)
         arguments.each_with_index do |arg, idx|
-          arg[:x] = umap_coords[idx, 0]
-          arg[:y] = umap_coords[idx, 1]
-          arg[:cluster_ids] = build_cluster_ids(idx, cluster_results)
+          arg.x = umap_coords[idx, 0]
+          arg.y = umap_coords[idx, 1]
+          arg.cluster_ids = build_cluster_ids(idx, cluster_results)
         end
       end
 
       def build_cluster_ids(idx, cluster_results)
-        cluster_ids = ["0"] # Root cluster
+        cluster_ids = [ "0" ] # Root cluster
 
         cluster_results.keys.sort.each do |level|
           cluster_id = "#{level}_#{cluster_results[level][idx]}"

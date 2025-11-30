@@ -18,7 +18,7 @@ module Broadlistening
       end
 
       def embed(texts)
-        texts = [texts] if texts.is_a?(String)
+        texts = [ texts ] if texts.is_a?(String)
         response = with_retry do
           @client.embeddings(
             parameters: {

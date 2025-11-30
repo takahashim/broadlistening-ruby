@@ -4,22 +4,19 @@ module Broadlistening
   module Steps
     class MergeLabelling < BaseStep
       def execute
-        initial_labels = context[:initial_labels]
-        cluster_results = context[:cluster_results]
-        arguments = context[:arguments]
+        return context if context.initial_labels.empty?
 
-        return context.merge(labels: {}) if initial_labels.empty?
-
-        all_labels = initial_labels.dup
+        all_labels = context.initial_labels.dup
 
         # Build parent-child relationships and merge from bottom to top
-        levels = cluster_results.keys.sort.reverse
+        levels = context.cluster_results.keys.sort.reverse
         levels[1..].each do |level|
-          parent_labels = merge_labels_for_level(arguments, all_labels, cluster_results, level)
+          parent_labels = merge_labels_for_level(context.arguments, all_labels, context.cluster_results, level)
           parent_labels.each { |l| all_labels[l[:cluster_id]] = l }
         end
 
-        context.merge(labels: all_labels)
+        context.labels = all_labels
+        context
       end
 
       private
@@ -62,7 +59,7 @@ module Broadlistening
       def find_child_clusters(arguments, cluster_results, parent_level, child_level, parent_cluster_id)
         child_clusters = Set.new
 
-        arguments.each_with_index do |arg, idx|
+        arguments.each_with_index do |_arg, idx|
           next unless cluster_results[parent_level][idx] == parent_cluster_id
 
           child_clusters.add(cluster_results[child_level][idx])

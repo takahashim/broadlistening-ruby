@@ -3,25 +3,21 @@
 require "active_support"
 require "active_support/core_ext/string/inflections"
 require "numo/narray"
-
-# Load numo-linalg with OpenBLAS
-require "numo/linalg/linalg"
-openblas_path = ENV.fetch("OPENBLAS_LIBPATH", "/opt/homebrew/opt/openblas/lib")
-Numo::Linalg::Loader.load_openblas(openblas_path)
-
 require "openai"
 require "parallel"
 require "json"
-
-# Optional dependencies
-begin
-  require "umappp"
-rescue LoadError
-  # umappp is optional - will use fallback PCA dimensionality reduction
-end
+require "umappp"
 
 require_relative "broadlistening/version"
 require_relative "broadlistening/config"
+require_relative "broadlistening/spec_loader"
+require_relative "broadlistening/status"
+require_relative "broadlistening/planner"
+require_relative "broadlistening/comment"
+require_relative "broadlistening/argument"
+require_relative "broadlistening/csv_loader"
+require_relative "broadlistening/compatibility"
+require_relative "broadlistening/context"
 require_relative "broadlistening/pipeline"
 
 # Services

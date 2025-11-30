@@ -1,98 +1,125 @@
 # frozen_string_literal: true
 
+require "pathname"
+
 module Broadlistening
+  # Orchestrates the execution of the broadlistening pipeline.
+  #
+  # The Pipeline is responsible for:
+  # - Coordinating step execution order
+  # - Managing execution status and locking
+  # - Handling incremental execution (skip unchanged steps)
+  # - Emitting instrumentation events
+  #
+  # @example Basic usage
+  #   pipeline = Pipeline.new(api_key: "...", cluster_nums: [5, 15])
+  #   result = pipeline.run(comments, output_dir: "/path/to/output")
+  #
+  # @example Force re-run all steps
+  #   pipeline.run(comments, output_dir: "/path/to/output", force: true)
+  #
+  # @example Run only a specific step
+  #   pipeline.run(comments, output_dir: "/path/to/output", only: :clustering)
   class Pipeline
-    STEPS = %i[
-      extraction
-      embedding
-      clustering
-      initial_labelling
-      merge_labelling
-      overview
-      aggregation
-    ].freeze
+    attr_reader :config, :spec_loader
 
-    attr_reader :config, :context
-
-    def initialize(options = {})
-      @config = options.is_a?(Config) ? options : Config.new(options)
-      @context = {}
+    def initialize(config, spec_loader: nil)
+      @config = config.is_a?(Config) ? config : Config.new(config)
+      @spec_loader = spec_loader || SpecLoader.default
     end
 
-    # Run the pipeline
+    # Run the pipeline with incremental execution support
     #
     # @param comments [Array] Array of comments to process
-    # @param resume_from [Symbol, nil] Step to resume from (skips previous steps)
-    # @param context [Hash, nil] Previous context to restore when resuming
+    # @param output_dir [String] Directory for output files and status tracking
+    # @param force [Boolean] Force re-run all steps
+    # @param only [Symbol, nil] Run only the specified step
     # @return [Hash] The result of the pipeline
-    def run(comments, resume_from: nil, context: nil)
-      if resume_from && context
-        validate_resume_from!(resume_from)
-        @context = context
-      else
-        normalized_comments = normalize_comments(comments)
-        @context = { comments: normalized_comments }
-      end
+    def run(comments, output_dir:, force: false, only: nil)
+      output_path = Pathname.new(output_dir)
+      status = Status.new(output_path)
 
-      steps_to_run = determine_steps_to_run(resume_from)
+      raise Error, "Pipeline is locked. Another process may be running." if status.locked?
 
-      instrument("pipeline.broadlistening", comment_count: @context[:comments]&.size || 0) do
-        steps_to_run.each do |step_name, index|
-          run_step(step_name, index)
-        end
-      end
+      context = Context.load_from_dir(output_path)
+      context.output_dir = output_path
 
-      self.context[:result]
+      # Normalize comments if not already loaded
+      context.comments = normalize_comments(comments) if context.comments.empty?
+
+      planner = Planner.new(
+        config: @config,
+        status: status,
+        output_dir: output_path,
+        spec_loader: @spec_loader
+      )
+      plan = planner.create_plan(force: force, only: only)
+
+      status.start_pipeline(plan)
+
+      execute_pipeline(plan, status, planner, context, output_path)
+
+      status.complete_pipeline
+      context.result
+    rescue StandardError => e
+      status&.error_pipeline(e)
+      raise
     end
 
     private
 
-    def validate_resume_from!(resume_from)
-      return if STEPS.include?(resume_from)
-
-      raise ArgumentError, "Invalid step: #{resume_from}. Valid steps: #{STEPS.join(', ')}"
-    end
-
-    def determine_steps_to_run(resume_from)
-      return STEPS.each_with_index.to_a unless resume_from
-
-      start_index = STEPS.index(resume_from)
-      STEPS[start_index..].each_with_index.map { |step, i| [step, start_index + i] }
-    end
-
-    def run_step(step_name, index)
-      payload = {
-        step: step_name,
-        step_index: index,
-        step_total: STEPS.size
-      }
-
-      instrument("step.broadlistening", payload) do
-        step = step_class(step_name).new(config, @context)
-        @context = step.execute
+    def execute_pipeline(plan, status, planner, context, output_path)
+      instrument("pipeline.broadlistening", comment_count: context.comments.size) do
+        plan.each_with_index do |step_plan, index|
+          if step_plan[:run]
+            execute_step(step_plan[:step], index, status, planner, context, output_path)
+          else
+            notify_skip(step_plan[:step], step_plan[:reason])
+          end
+        end
       end
     end
 
-    def instrument(event_name, payload = {}, &block)
-      ActiveSupport::Notifications.instrument(event_name, payload, &block)
+    def execute_step(step_name, index, status, planner, context, output_path)
+      status.start_step(step_name)
+      start_time = Time.now
+
+      steps = @spec_loader.steps
+      payload = { step: step_name, step_index: index, step_total: steps.size }
+
+      instrument("step.broadlistening", payload) do
+        step = step_class(step_name).new(@config, context)
+        step.execute
+      end
+
+      duration = Time.now - start_time
+      params = planner.extract_current_params(step_name)
+      status.complete_step(step_name, params: params, duration: duration)
+
+      context.save_step(step_name, output_path)
     end
 
     def normalize_comments(comments)
       comments.map do |comment|
-        if comment.is_a?(Hash)
-          {
-            id: comment[:id] || comment["id"],
-            body: comment[:body] || comment["body"],
-            proposal_id: comment[:proposal_id] || comment["proposal_id"]
-          }
+        if comment.is_a?(Comment)
+          comment
+        elsif comment.is_a?(Hash)
+          Comment.from_hash(comment, property_names: @config.property_names)
         else
-          {
-            id: comment.id,
-            body: comment.body,
-            proposal_id: comment.respond_to?(:proposal_id) ? comment.proposal_id : nil
-          }
+          Comment.from_object(comment, property_names: @config.property_names)
         end
       end
+    end
+
+    def notify_skip(step_name, reason)
+      ActiveSupport::Notifications.instrument("step.skip.broadlistening", {
+                                                step: step_name,
+                                                reason: reason
+                                              })
+    end
+
+    def instrument(event_name, payload = {}, &block)
+      ActiveSupport::Notifications.instrument(event_name, payload, &block)
     end
 
     def step_class(name)

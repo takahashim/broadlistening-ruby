@@ -5,9 +5,9 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in broadlistening.gemspec
 gemspec
 
-gem "rake", "~> 13.0"
-gem "rspec", "~> 3.0"
-gem "rubocop", "~> 1.21"
-gem "rubocop-rspec", "~> 3.0"
-gem "webmock", "~> 3.0"
+gem "rake"
+gem "rspec"
+gem "rubocop-rails-omakase"
+gem "rubocop-rspec"
+gem "webmock"
 gem "simplecov", "~> 0.22", require: false

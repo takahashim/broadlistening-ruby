@@ -1,14 +1,52 @@
 # frozen_string_literal: true
 
+require "json"
+
 module Broadlistening
   class Config
-    attr_reader :model, :embedding_model, :provider, :cluster_nums, :workers, :prompts, :api_key
+    attr_reader :model, :embedding_model, :provider, :cluster_nums, :workers, :prompts, :api_key,
+                :enable_source_link, :hidden_properties, :is_pubcom
 
     DEFAULT_MODEL = "gpt-4o-mini"
     DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
     DEFAULT_PROVIDER = "openai"
-    DEFAULT_CLUSTER_NUMS = [5, 15].freeze
+    DEFAULT_CLUSTER_NUMS = [ 5, 15 ].freeze
     DEFAULT_WORKERS = 10
+
+    # JSON文字列からConfigを生成
+    def self.from_json(json_string)
+      data = JSON.parse(json_string, symbolize_names: true)
+      from_hash(data)
+    end
+
+    # Hashからonfigを生成（Python版config.jsonの構造にも対応）
+    def self.from_hash(hash)
+      # プロンプトのキーをシンボルに変換
+      prompts = hash[:prompts]&.transform_keys(&:to_sym)
+
+      # Python版config.jsonのネスト構造にも対応
+      cluster_nums = hash[:cluster_nums] || hash.dig(:hierarchical_clustering, :cluster_nums)
+      workers = hash[:workers] || hash.dig(:extraction, :workers)
+      hidden_properties = hash[:hidden_properties] || hash.dig(:aggregation, :hidden_properties)
+
+      new(
+        api_key: hash[:api_key] || ENV.fetch("OPENAI_API_KEY", nil),
+        model: hash[:model],
+        embedding_model: hash[:embedding_model],
+        provider: hash[:provider],
+        cluster_nums: cluster_nums,
+        workers: workers,
+        prompts: prompts,
+        enable_source_link: hash[:enable_source_link],
+        hidden_properties: hidden_properties,
+        is_pubcom: hash[:is_pubcom]
+      )
+    end
+
+    # JSONファイルからConfigを生成
+    def self.from_file(path)
+      from_json(File.read(path))
+    end
 
     def initialize(options = {})
       @model = options[:model] || DEFAULT_MODEL
@@ -18,6 +56,9 @@ module Broadlistening
       @workers = options[:workers] || DEFAULT_WORKERS
       @prompts = default_prompts.merge(options[:prompts] || {})
       @api_key = options[:api_key] || ENV.fetch("OPENAI_API_KEY", nil)
+      @enable_source_link = options.fetch(:enable_source_link, false)
+      @hidden_properties = options.fetch(:hidden_properties, {}) || {}
+      @is_pubcom = options.fetch(:is_pubcom, false)
 
       validate!
     end
@@ -28,8 +69,26 @@ module Broadlistening
         embedding_model: embedding_model,
         provider: provider,
         cluster_nums: cluster_nums,
-        workers: workers
+        workers: workers,
+        enable_source_link: enable_source_link,
+        hidden_properties: hidden_properties,
+        is_pubcom: is_pubcom
       }
+    end
+
+    # JSONへのエクスポート
+    def to_json(*args)
+      to_h.merge(prompts: prompts).to_json(*args)
+    end
+
+    # JSONファイルへの保存
+    def save_to_file(path)
+      File.write(path, JSON.pretty_generate(to_h.merge(prompts: prompts)))
+    end
+
+    # Returns list of property names to include in propertyMap
+    def property_names
+      hidden_properties.keys
     end
 
     private

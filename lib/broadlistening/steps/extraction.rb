@@ -4,16 +4,12 @@ module Broadlistening
   module Steps
     class Extraction < BaseStep
       def execute
-        comments = context[:comments]
-        return context.merge(arguments: [], relations: []) if comments.empty?
+        return context if context.comments.empty?
 
-        results = extract_opinions_in_parallel(comments)
-        arguments, relations = build_arguments_and_relations(comments, results)
+        results = extract_opinions_in_parallel(context.comments)
+        build_arguments_and_relations(context.comments, results)
 
-        context.merge(
-          arguments: arguments,
-          relations: relations
-        )
+        context
       end
 
       private
@@ -32,16 +28,16 @@ module Broadlistening
       end
 
       def extract_arguments_from_comment(comment)
-        return [] if comment[:body].nil? || comment[:body].strip.empty?
+        return [] if comment.empty?
 
         response = llm_client.chat(
           system: config.prompts[:extraction],
-          user: comment[:body],
+          user: comment.body,
           json_mode: true
         )
         parse_extraction_response(response)
       rescue StandardError => e
-        warn "Failed to extract from comment #{comment[:id]}: #{e.message}"
+        warn "Failed to extract from comment #{comment.id}: #{e.message}"
         []
       end
 
@@ -58,31 +54,19 @@ module Broadlistening
       end
 
       def build_arguments_and_relations(comments, results)
-        arguments = []
-        relations = []
-
         results.each_with_index do |extracted_opinions, idx|
           comment = comments[idx]
           extracted_opinions.each_with_index do |opinion_text, opinion_idx|
-            arg_id = generate_arg_id(comment[:id], opinion_idx)
-            arguments << {
-              arg_id: arg_id,
-              argument: opinion_text,
-              comment_id: comment[:id]
-            }
-            relations << {
-              arg_id: arg_id,
-              comment_id: comment[:id],
-              proposal_id: comment[:proposal_id]
+            arg = Argument.from_comment(comment, opinion_text, opinion_idx)
+            context.arguments << arg
+
+            context.relations << {
+              arg_id: arg.arg_id,
+              comment_id: arg.comment_id,
+              proposal_id: comment.proposal_id
             }
           end
         end
-
-        [arguments, relations]
-      end
-
-      def generate_arg_id(comment_id, index)
-        "A#{comment_id}_#{index}"
       end
     end
   end

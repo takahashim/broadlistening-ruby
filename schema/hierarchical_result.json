@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/takahashim/broadlistening-ruby/blob/main/schema/hierarchical_result.json",
+  "title": "Hierarchical Result",
+  "description": "Output schema for Kouchou-AI / Broadlistening pipeline results. This schema defines the structure of hierarchical_result.json produced by both Python and Ruby implementations.",
+  "type": "object",
+  "required": ["arguments", "clusters", "comments", "propertyMap", "translations", "overview", "config"],
+  "properties": {
+    "arguments": {
+      "type": "array",
+      "description": "List of extracted arguments/opinions from comments",
+      "items": {
+        "$ref": "#/definitions/argument"
+      }
+    },
+    "clusters": {
+      "type": "array",
+      "description": "Hierarchical cluster definitions",
+      "items": {
+        "$ref": "#/definitions/cluster"
+      }
+    },
+    "comments": {
+      "type": "object",
+      "description": "Map of comment_id to comment data",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string",
+            "description": "Original comment text"
+          }
+        }
+      }
+    },
+    "propertyMap": {
+      "type": "object",
+      "description": "Map of property names to argument property values",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "translations": {
+      "type": "object",
+      "description": "Translation data (reserved for future use)",
+      "additionalProperties": true
+    },
+    "overview": {
+      "type": "string",
+      "description": "LLM-generated overview summarizing all clusters"
+    },
+    "config": {
+      "type": "object",
+      "description": "Pipeline configuration used to generate this result",
+      "additionalProperties": true
+    },
+    "comment_num": {
+      "type": "integer",
+      "description": "Total number of input comments (optional)"
+    }
+  },
+  "definitions": {
+    "argument": {
+      "type": "object",
+      "description": "An extracted argument/opinion from a comment",
+      "required": ["arg_id", "argument", "comment_id", "x", "y", "cluster_ids"],
+      "properties": {
+        "arg_id": {
+          "type": "string",
+          "description": "Unique argument identifier in format A{comment_id}_{index}",
+          "pattern": "^A\\d+_\\d+$"
+        },
+        "argument": {
+          "type": "string",
+          "description": "The extracted argument/opinion text"
+        },
+        "comment_id": {
+          "type": ["integer", "string"],
+          "description": "ID of the source comment"
+        },
+        "x": {
+          "type": "number",
+          "description": "UMAP x-coordinate for visualization"
+        },
+        "y": {
+          "type": "number",
+          "description": "UMAP y-coordinate for visualization"
+        },
+        "p": {
+          "type": ["integer", "number"],
+          "description": "Priority or ordering value (optional)"
+        },
+        "cluster_ids": {
+          "type": "array",
+          "description": "List of cluster IDs this argument belongs to (from root to leaf)",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "attributes": {
+          "type": ["object", "null"],
+          "description": "Additional attributes extracted from source comment",
+          "additionalProperties": true
+        },
+        "url": {
+          "type": ["string", "null"],
+          "description": "Source URL of the original comment"
+        }
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "description": "A cluster in the hierarchy",
+      "required": ["level", "id", "label", "takeaway", "value", "parent"],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "description": "Hierarchy level (0 = root)",
+          "minimum": 0
+        },
+        "id": {
+          "type": "string",
+          "description": "Unique cluster identifier. Root is '0', others are '{level}_{index}'",
+          "pattern": "^(0|\\d+_\\d+)$"
+        },
+        "label": {
+          "type": "string",
+          "description": "LLM-generated label for this cluster"
+        },
+        "takeaway": {
+          "type": "string",
+          "description": "LLM-generated description/takeaway for this cluster"
+        },
+        "value": {
+          "type": "integer",
+          "description": "Number of arguments in this cluster",
+          "minimum": 0
+        },
+        "parent": {
+          "type": "string",
+          "description": "ID of parent cluster (empty string for root)"
+        },
+        "density_rank_percentile": {
+          "type": ["number", "null"],
+          "description": "Density ranking percentile (optional)"
+        }
+      }
+    }
+  }
+}

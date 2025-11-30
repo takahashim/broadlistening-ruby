@@ -1,6 +1,6 @@
 # Broadlistening
 
-Broadlistening パイプラインの Ruby 実装です。LLM を使用して公開コメントをクラスタリング・分析します。
+広聴 AIのBroadlistening パイプラインの Ruby 実装です。LLM を使用して公開コメントをクラスタリング・分析します。
 
 ## 概要
 
@@ -19,7 +19,13 @@ Broadlistening は、大量のコメントや意見を AI を活用して分析�
 ### Gemfile に追加
 
 ```ruby
-gem 'broadlistening', path: 'vendor/broadlistening'
+gem 'broadlistening'
+```
+
+または GitHub から直接インストール：
+
+```ruby
+gem 'broadlistening', github: 'takahashim/broadlistening-ruby'
 ```
 
 ### 依存関係のインストール
@@ -149,18 +155,27 @@ Broadlistening::Pipeline.new(
 
 ## 依存関係
 
-### 必須
 - Ruby >= 3.1.0
 - activesupport >= 7.0
 - numo-narray ~> 0.9
-- numo-linalg ~> 0.1
 - ruby-openai ~> 7.0
 - parallel ~> 1.20
+- rice ~> 4.6.0
+- umappp ~> 0.2
 
-### オプション
-- umappp ~> 0.1 - UMAP による次元削減（C++ コンパイラが必要）
+### umappp のインストール
 
-`umappp` がインストールされていない場合、PCA（SVD ベース）による次元削減が使用されます。
+umappp は C++ ネイティブ拡張を含むため、インストール時に C++ コンパイラが必要です：
+
+```bash
+# macOS
+CXX=clang++ gem install umappp
+
+# Linux
+gem install umappp
+```
+
+**注意**: Rice 4.7.x との互換性問題があるため、Rice 4.6.x を使用してください。
 
 ## 開発
 
@@ -177,4 +192,4 @@ bin/console
 
 ## ライセンス
 
-MIT License
+AGPL 3.0
