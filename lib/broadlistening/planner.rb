@@ -12,7 +12,7 @@ module Broadlistening
       @status = status
       @output_dir = Pathname.new(output_dir)
       @spec_loader = spec_loader || SpecLoader.default
-      @previous_jobs = status.previous_completed_jobs
+      @all_completed_jobs = status.all_completed_jobs
     end
 
     def create_plan(force: false, only: nil)
@@ -89,21 +89,20 @@ module Broadlistening
     end
 
     def find_previous_job(step_name)
-      @previous_jobs.find { |j| j[:step] == step_name.to_s }
+      @all_completed_jobs.find { |j| j.step == step_name.to_s }
     end
 
     def detect_param_changes(spec, prev_job)
       params_to_check = spec[:dependencies][:params]
-      prev_params = prev_job[:params] || {}
+      prev_params = prev_job.params
       current_params = extract_current_params(spec[:step])
 
       params_to_check.select do |param|
         current_value = current_params[param]
-        # prev_paramsのキーは文字列の場合もある
-        prev_value = prev_params[param.to_s] || prev_params[param]
+        prev_value = prev_params[param]
 
         # プロンプトなど長い文字列はハッシュ化して比較
-        if current_value.is_a?(String) && current_value.length > 100
+        if current_value.is_a?(String) && current_value.length > LONG_STRING_THRESHOLD
           Digest::SHA256.hexdigest(current_value) != prev_value
         else
           current_value != prev_value

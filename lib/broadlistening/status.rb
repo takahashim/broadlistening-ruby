@@ -4,34 +4,25 @@ require "json"
 require "fileutils"
 require "pathname"
 require "time"
-require "digest"
 
 module Broadlistening
   class Status
     LOCK_DURATION = 300 # 5分
 
-    attr_reader :output_dir, :status_file, :data
+    attr_reader :output_dir, :status_file
 
     def initialize(output_dir)
       @output_dir = Pathname.new(output_dir)
       @status_file = @output_dir / "status.json"
       @data = load_or_initialize
-    end
-
-    def load_or_initialize
-      if status_file.exist?
-        JSON.parse(status_file.read, symbolize_names: true)
-      else
-        {
-          status: "initialized",
-          completed_jobs: [],
-          previously_completed_jobs: []
-        }
-      end
+      @completed_jobs = parse_completed_jobs(@data[:completed_jobs])
+      @previously_completed_jobs = parse_completed_jobs(@data[:previously_completed_jobs])
     end
 
     def save
       FileUtils.mkdir_p(output_dir)
+      @data[:completed_jobs] = @completed_jobs.map(&:to_h)
+      @data[:previously_completed_jobs] = @previously_completed_jobs.map(&:to_h)
       status_file.write(JSON.pretty_generate(@data))
     end
 
@@ -40,9 +31,9 @@ module Broadlistening
         status: "running",
         plan: plan.map { |p| serialize_plan_entry(p) },
         start_time: Time.now.iso8601,
-        completed_jobs: [],
         lock_until: lock_time.iso8601
       )
+      @completed_jobs = []
       save
     end
 
@@ -54,14 +45,13 @@ module Broadlistening
     end
 
     def complete_step(step_name, params:, duration:, token_usage: 0)
-      @data[:completed_jobs] ||= []
-      @data[:completed_jobs] << {
-        step: step_name.to_s,
-        completed: Time.now.iso8601,
+      job = CompletedJob.create(
+        step: step_name,
         duration: duration,
-        params: serialize_params(params),
+        params: params,
         token_usage: token_usage
-      }
+      )
+      @completed_jobs << job
       @data.delete(:current_job)
       @data.delete(:current_job_started)
       save
@@ -90,11 +80,27 @@ module Broadlistening
       Time.parse(@data[:lock_until]) > Time.now
     end
 
-    def previous_completed_jobs
-      (@data[:completed_jobs] || []) + (@data[:previously_completed_jobs] || [])
+    def all_completed_jobs
+      @completed_jobs + @previously_completed_jobs
     end
 
     private
+
+    def load_or_initialize
+      if status_file.exist?
+        JSON.parse(status_file.read, symbolize_names: true)
+      else
+        {
+          status: "initialized",
+          completed_jobs: [],
+          previously_completed_jobs: []
+        }
+      end
+    end
+
+    def parse_completed_jobs(jobs_data)
+      (jobs_data || []).map { |j| CompletedJob.from_hash(j) }
+    end
 
     def lock_time
       Time.now + LOCK_DURATION
@@ -108,25 +114,14 @@ module Broadlistening
       }
     end
 
-    def serialize_params(params)
-      params.transform_values do |v|
-        # プロンプトなど長い文字列はハッシュ化して保存（サイズ削減・比較用）
-        if v.is_a?(String) && v.length > 100
-          Digest::SHA256.hexdigest(v)
-        else
-          v
-        end
-      end
-    end
-
     def merge_previous_jobs
       return unless @data[:previous]
 
-      old_jobs = @data[:previous][:completed_jobs] || []
-      old_jobs += @data[:previous][:previously_completed_jobs] || []
+      old_jobs = parse_completed_jobs(@data[:previous][:completed_jobs])
+      old_jobs += parse_completed_jobs(@data[:previous][:previously_completed_jobs])
 
-      newly_completed = @data[:completed_jobs].map { |j| j[:step] }
-      @data[:previously_completed_jobs] = old_jobs.reject { |j| newly_completed.include?(j[:step]) }
+      newly_completed_steps = @completed_jobs.map(&:step)
+      @previously_completed_jobs = old_jobs.reject { |j| newly_completed_steps.include?(j.step) }
     end
   end
 end

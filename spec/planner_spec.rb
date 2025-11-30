@@ -96,65 +96,109 @@ RSpec.describe Broadlistening::Planner do
     end
 
     context 'when force is true' do
-      before do
-        # Simulate previous run
-        status.data[:completed_jobs] = spec_loader.steps.map do |step|
-          { step: step.to_s, params: {} }
+      let(:completed_jobs_data) do
+        spec_loader.steps.map do |step|
+          { step: step.to_s, completed: '2024-01-01T00:00:00Z', duration: 1.0, params: {}, token_usage: 0 }
         end
+      end
+
+      before do
+        # Create status file with completed jobs
+        FileUtils.mkdir_p(output_dir)
+        File.write(File.join(output_dir, 'status.json'), {
+          status: 'completed',
+          completed_jobs: completed_jobs_data
+        }.to_json)
         # Create output files
         spec_loader.specs.each do |spec|
           File.write(File.join(output_dir, spec[:output_file]), '{}')
         end
       end
 
+      let(:fresh_status) { Broadlistening::Status.new(output_dir) }
+      let(:planner_for_test) do
+        described_class.new(
+          config: config,
+          status: fresh_status,
+          output_dir: output_dir,
+          spec_loader: spec_loader
+        )
+      end
+
       it 'plans to run all steps' do
-        plan = planner.create_plan(force: true)
+        plan = planner_for_test.create_plan(force: true)
         expect(plan.all? { |p| p[:run] }).to be true
       end
 
       it "gives reason 'forced with -f'" do
-        plan = planner.create_plan(force: true)
+        plan = planner_for_test.create_plan(force: true)
         expect(plan.first[:reason]).to eq('forced with -f')
       end
     end
 
     context 'when only is specified' do
-      before do
-        # Simulate previous run
-        status.data[:completed_jobs] = spec_loader.steps.map do |step|
-          { step: step.to_s, params: {} }
+      let(:completed_jobs_data) do
+        spec_loader.steps.map do |step|
+          { step: step.to_s, completed: '2024-01-01T00:00:00Z', duration: 1.0, params: {}, token_usage: 0 }
         end
+      end
+
+      before do
+        # Create status file with completed jobs
+        FileUtils.mkdir_p(output_dir)
+        File.write(File.join(output_dir, 'status.json'), {
+          status: 'completed',
+          completed_jobs: completed_jobs_data
+        }.to_json)
         # Create output files
         spec_loader.specs.each do |spec|
           File.write(File.join(output_dir, spec[:output_file]), '{}')
         end
       end
 
+      let(:fresh_status) { Broadlistening::Status.new(output_dir) }
+      let(:planner_for_test) do
+        described_class.new(
+          config: config,
+          status: fresh_status,
+          output_dir: output_dir,
+          spec_loader: spec_loader
+        )
+      end
+
       it 'plans to run only the specified step' do
-        plan = planner.create_plan(only: :clustering)
+        plan = planner_for_test.create_plan(only: :clustering)
         running_steps = plan.select { |p| p[:run] }.map { |p| p[:step] }
         expect(running_steps).to eq([ :clustering ])
       end
 
       it "gives reason 'forced this step with -o'" do
-        plan = planner.create_plan(only: :clustering)
+        plan = planner_for_test.create_plan(only: :clustering)
         clustering_plan = plan.find { |p| p[:step] == :clustering }
         expect(clustering_plan[:reason]).to eq('forced this step with -o')
       end
 
       it "gives reason 'forced another step with -o' for other steps" do
-        plan = planner.create_plan(only: :clustering)
+        plan = planner_for_test.create_plan(only: :clustering)
         extraction_plan = plan.find { |p| p[:step] == :extraction }
         expect(extraction_plan[:reason]).to eq('forced another step with -o')
       end
     end
 
     context 'when output file is missing' do
-      before do
-        # Simulate previous run
-        status.data[:completed_jobs] = spec_loader.steps.map do |step|
-          { step: step.to_s, params: {} }
+      let(:completed_jobs_data) do
+        spec_loader.steps.map do |step|
+          { step: step.to_s, completed: '2024-01-01T00:00:00Z', duration: 1.0, params: {}, token_usage: 0 }
         end
+      end
+
+      before do
+        # Create status file with completed jobs
+        FileUtils.mkdir_p(output_dir)
+        File.write(File.join(output_dir, 'status.json'), {
+          status: 'completed',
+          completed_jobs: completed_jobs_data
+        }.to_json)
         # Create output files except extraction
         spec_loader.specs.each do |spec|
           next if spec[:step] == :extraction
@@ -163,15 +207,25 @@ RSpec.describe Broadlistening::Planner do
         end
       end
 
+      let(:fresh_status) { Broadlistening::Status.new(output_dir) }
+      let(:planner_for_test) do
+        described_class.new(
+          config: config,
+          status: fresh_status,
+          output_dir: output_dir,
+          spec_loader: spec_loader
+        )
+      end
+
       it 'plans to re-run step with missing output' do
-        plan = planner.create_plan
+        plan = planner_for_test.create_plan
         extraction_plan = plan.find { |p| p[:step] == :extraction }
         expect(extraction_plan[:run]).to be true
         expect(extraction_plan[:reason]).to eq('previous output not found')
       end
 
       it 'plans to re-run dependent steps' do
-        plan = planner.create_plan
+        plan = planner_for_test.create_plan
         embedding_plan = plan.find { |p| p[:step] == :embedding }
         expect(embedding_plan[:run]).to be true
         expect(embedding_plan[:reason]).to include('dependent steps will re-run')
@@ -180,7 +234,7 @@ RSpec.describe Broadlistening::Planner do
 
     context 'when nothing changed' do
       # Need to create planner first, then modify status, then create a new planner
-      let(:completed_jobs) do
+      let(:completed_jobs_data) do
         spec_loader.steps.map do |step|
           params = described_class.new(
             config: config,
@@ -191,14 +245,17 @@ RSpec.describe Broadlistening::Planner do
           serialized_params = params.transform_values do |v|
             v.is_a?(String) && v.length > 100 ? Digest::SHA256.hexdigest(v) : v
           end
-          { step: step.to_s, params: serialized_params }
+          { step: step.to_s, completed: '2024-01-01T00:00:00Z', duration: 1.0, params: serialized_params, token_usage: 0 }
         end
       end
 
       before do
-        # Simulate previous run with current params
-        status.data[:completed_jobs] = completed_jobs
-        status.save
+        # Simulate previous run with current params by writing to status file
+        FileUtils.mkdir_p(output_dir)
+        File.write(File.join(output_dir, 'status.json'), {
+          status: 'completed',
+          completed_jobs: completed_jobs_data
+        }.to_json)
         # Create output files
         spec_loader.specs.each do |spec|
           File.write(File.join(output_dir, spec[:output_file]), '{}')
@@ -228,43 +285,64 @@ RSpec.describe Broadlistening::Planner do
     end
 
     context 'when parameter changed' do
-      before do
-        # Simulate previous run with different cluster_nums
-        status.data[:completed_jobs] = [
-          { step: 'extraction',
+      let(:completed_jobs_data) do
+        [
+          { step: 'extraction', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
             params: { model: 'gpt-4o-mini', prompt: Digest::SHA256.hexdigest(config.prompts[:extraction]) } },
-          { step: 'embedding', params: { model: 'text-embedding-3-small' } },
-          { step: 'clustering', params: { cluster_nums: [ 3, 6 ] } }, # Different from current [5, 15]
-          { step: 'initial_labelling',
+          { step: 'embedding', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
+            params: { model: 'text-embedding-3-small' } },
+          { step: 'clustering', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
+            params: { cluster_nums: [ 3, 6 ] } }, # Different from current [5, 15]
+          { step: 'initial_labelling', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
             params: { model: 'gpt-4o-mini', prompt: Digest::SHA256.hexdigest(config.prompts[:initial_labelling]) } },
-          { step: 'merge_labelling',
+          { step: 'merge_labelling', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
             params: { model: 'gpt-4o-mini', prompt: Digest::SHA256.hexdigest(config.prompts[:merge_labelling]) } },
-          { step: 'overview',
+          { step: 'overview', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
             params: { model: 'gpt-4o-mini', prompt: Digest::SHA256.hexdigest(config.prompts[:overview]) } },
-          { step: 'aggregation', params: {} }
+          { step: 'aggregation', completed: '2024-01-01T00:00:00Z', duration: 1.0, token_usage: 0,
+            params: {} }
         ]
+      end
+
+      before do
+        # Simulate previous run with different cluster_nums by writing to status file
+        FileUtils.mkdir_p(output_dir)
+        File.write(File.join(output_dir, 'status.json'), {
+          status: 'completed',
+          completed_jobs: completed_jobs_data
+        }.to_json)
         # Create output files
         spec_loader.specs.each do |spec|
           File.write(File.join(output_dir, spec[:output_file]), '{}')
         end
       end
 
+      let(:fresh_status) { Broadlistening::Status.new(output_dir) }
+      let(:planner_for_test) do
+        described_class.new(
+          config: config,
+          status: fresh_status,
+          output_dir: output_dir,
+          spec_loader: spec_loader
+        )
+      end
+
       it 'plans to re-run step with changed parameter' do
-        plan = planner.create_plan
+        plan = planner_for_test.create_plan
         clustering_plan = plan.find { |p| p[:step] == :clustering }
         expect(clustering_plan[:run]).to be true
         expect(clustering_plan[:reason]).to include('parameters changed')
       end
 
       it 'plans to re-run dependent steps' do
-        plan = planner.create_plan
+        plan = planner_for_test.create_plan
         initial_labelling_plan = plan.find { |p| p[:step] == :initial_labelling }
         expect(initial_labelling_plan[:run]).to be true
         expect(initial_labelling_plan[:reason]).to include('dependent steps will re-run')
       end
 
       it 'does not re-run independent steps' do
-        plan = planner.create_plan
+        plan = planner_for_test.create_plan
         extraction_plan = plan.find { |p| p[:step] == :extraction }
         embedding_plan = plan.find { |p| p[:step] == :embedding }
         expect(extraction_plan[:run]).to be false
