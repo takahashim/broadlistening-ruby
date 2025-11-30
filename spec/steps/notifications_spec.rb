@@ -6,7 +6,7 @@ RSpec.describe "Step Notifications" do
       api_key: "test-api-key",
       model: "gpt-4o-mini",
       cluster_nums: [ 2, 5 ],
-      workers: 2
+      workers: 1 # Use single worker to ensure sequential processing in tests
     }
   end
 
