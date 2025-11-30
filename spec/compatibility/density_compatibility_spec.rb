@@ -38,7 +38,7 @@ RSpec.describe "Density Calculation Compatibility" do
 
     it "calculates same density values as Python" do
       expected_results.each do |cluster_id, expected|
-        ruby_density = ruby_results[cluster_id][:density]
+        ruby_density = ruby_results[cluster_id].density
         python_density = expected["density"]
 
         expect(ruby_density).to be_within(1e-8).of(python_density),
@@ -48,7 +48,7 @@ RSpec.describe "Density Calculation Compatibility" do
 
     it "assigns same density ranks as Python" do
       expected_results.each do |cluster_id, expected|
-        ruby_rank = ruby_results[cluster_id][:density_rank]
+        ruby_rank = ruby_results[cluster_id].density_rank
         python_rank = expected["density_rank"]
 
         expect(ruby_rank).to eq(python_rank),
@@ -58,7 +58,7 @@ RSpec.describe "Density Calculation Compatibility" do
 
     it "calculates same density_rank_percentile as Python" do
       expected_results.each do |cluster_id, expected|
-        ruby_percentile = ruby_results[cluster_id][:density_rank_percentile]
+        ruby_percentile = ruby_results[cluster_id].density_rank_percentile
         python_percentile = expected["density_rank_percentile"]
 
         expect(ruby_percentile).to be_within(1e-10).of(python_percentile),

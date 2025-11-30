@@ -160,9 +160,9 @@ RSpec.describe "Step Notifications" do
 
     let(:initial_labels) do
       {
-        "2_0" => { cluster_id: "2_0", level: 2, label: "Label0", description: "Desc0" },
-        "2_1" => { cluster_id: "2_1", level: 2, label: "Label1", description: "Desc1" },
-        "2_2" => { cluster_id: "2_2", level: 2, label: "Label2", description: "Desc2" }
+        "2_0" => Broadlistening::ClusterLabel.new(cluster_id: "2_0", level: 2, label: "Label0", description: "Desc0"),
+        "2_1" => Broadlistening::ClusterLabel.new(cluster_id: "2_1", level: 2, label: "Label1", description: "Desc1"),
+        "2_2" => Broadlistening::ClusterLabel.new(cluster_id: "2_2", level: 2, label: "Label2", description: "Desc2")
       }
     end
 

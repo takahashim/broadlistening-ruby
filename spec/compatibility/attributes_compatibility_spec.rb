@@ -136,11 +136,11 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
 
     let(:labels) do
       {
-        "1_0" => { cluster_id: "1_0", level: 1, label: "Group A", description: "Description A" },
-        "1_1" => { cluster_id: "1_1", level: 1, label: "Group B", description: "Description B" },
-        "2_0" => { cluster_id: "2_0", level: 2, label: "Subgroup A1", description: "Sub A1" },
-        "2_1" => { cluster_id: "2_1", level: 2, label: "Subgroup A2", description: "Sub A2" },
-        "2_2" => { cluster_id: "2_2", level: 2, label: "Subgroup B1", description: "Sub B1" }
+        "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Group A", description: "Description A"),
+        "1_1" => Broadlistening::ClusterLabel.new(cluster_id: "1_1", level: 1, label: "Group B", description: "Description B"),
+        "2_0" => Broadlistening::ClusterLabel.new(cluster_id: "2_0", level: 2, label: "Subgroup A1", description: "Sub A1"),
+        "2_1" => Broadlistening::ClusterLabel.new(cluster_id: "2_1", level: 2, label: "Subgroup A2", description: "Sub A2"),
+        "2_2" => Broadlistening::ClusterLabel.new(cluster_id: "2_2", level: 2, label: "Subgroup B1", description: "Sub B1")
       }
     end
 
@@ -162,7 +162,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
 
     let(:result) do
       aggregation_step.execute
-      context.result
+      context.result.to_h
     end
 
     it "includes attributes in output arguments" do
@@ -235,8 +235,8 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
 
     let(:labels) do
       {
-        "1_0" => { cluster_id: "1_0", level: 1, label: "Group A", description: "Description A" },
-        "1_1" => { cluster_id: "1_1", level: 1, label: "Group B", description: "Description B" }
+        "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Group A", description: "Description A"),
+        "1_1" => Broadlistening::ClusterLabel.new(cluster_id: "1_1", level: 1, label: "Group B", description: "Description B")
       }
     end
 
@@ -254,7 +254,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
 
     let(:result) do
       aggregation_step.execute
-      context.result
+      context.result.to_h
     end
 
     it "builds propertyMap with property names as keys" do
@@ -307,7 +307,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
           Broadlistening::Comment.new(id: "2", body: "Comment 2", proposal_id: "test")
         ]
         ctx.arguments = arguments
-        ctx.labels = { "1_0" => { cluster_id: "1_0", level: 1, label: "Group", description: "Desc" } }
+        ctx.labels = { "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Group", description: "Desc") }
         ctx.cluster_results = { 1 => [ 0, 0 ] }
         ctx.overview = "Overview"
         ctx
@@ -316,7 +316,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
       let(:result) do
         step = Broadlistening::Steps::Aggregation.new(config_with_source_link, context)
         step.execute
-        context.result
+        context.result.to_h
       end
 
       it "includes url when present" do
@@ -349,7 +349,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
         ctx = Broadlistening::Context.new
         ctx.comments = [ Broadlistening::Comment.new(id: "1", body: "Comment 1", proposal_id: "test") ]
         ctx.arguments = arguments
-        ctx.labels = { "1_0" => { cluster_id: "1_0", level: 1, label: "Group", description: "Desc" } }
+        ctx.labels = { "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Group", description: "Desc") }
         ctx.cluster_results = { 1 => [ 0 ] }
         ctx.overview = "Overview"
         ctx
@@ -358,7 +358,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
       let(:result) do
         step = Broadlistening::Steps::Aggregation.new(config, context)
         step.execute
-        context.result
+        context.result.to_h
       end
 
       it "does not include url even when present in argument" do

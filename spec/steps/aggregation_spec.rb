@@ -32,11 +32,11 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
   let(:labels) do
     {
-      "1_0" => { cluster_id: "1_0", level: 1, label: "インフラ", description: "インフラに関する意見" },
-      "1_1" => { cluster_id: "1_1", level: 1, label: "教育", description: "教育に関する意見" },
-      "2_0" => { cluster_id: "2_0", level: 2, label: "環境", description: "環境問題への対策" },
-      "2_1" => { cluster_id: "2_1", level: 2, label: "交通", description: "交通機関の改善" },
-      "2_2" => { cluster_id: "2_2", level: 2, label: "学校教育", description: "学校教育の質向上" }
+      "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "インフラ", description: "インフラに関する意見"),
+      "1_1" => Broadlistening::ClusterLabel.new(cluster_id: "1_1", level: 1, label: "教育", description: "教育に関する意見"),
+      "2_0" => Broadlistening::ClusterLabel.new(cluster_id: "2_0", level: 2, label: "環境", description: "環境問題への対策"),
+      "2_1" => Broadlistening::ClusterLabel.new(cluster_id: "2_1", level: 2, label: "交通", description: "交通機関の改善"),
+      "2_2" => Broadlistening::ClusterLabel.new(cluster_id: "2_2", level: 2, label: "学校教育", description: "学校教育の質向上")
     }
   end
 
@@ -62,7 +62,7 @@ RSpec.describe Broadlistening::Steps::Aggregation do
   describe "#execute" do
     let(:result) do
       step.execute
-      context.result
+      context.result.to_h
     end
 
     describe "top-level structure" do
@@ -137,9 +137,10 @@ RSpec.describe Broadlistening::Steps::Aggregation do
         context.arguments = arguments_without_comment_id
         step.execute
 
-        expect(context.result[:arguments].first[:comment_id]).to eq(1)
-        expect(context.result[:arguments][1][:comment_id]).to eq(2)
-        expect(context.result[:arguments][2][:comment_id]).to eq(3)
+        result_h = context.result.to_h
+        expect(result_h[:arguments].first[:comment_id]).to eq(1)
+        expect(result_h[:arguments][1][:comment_id]).to eq(2)
+        expect(result_h[:arguments][2][:comment_id]).to eq(3)
       end
     end
 
@@ -260,8 +261,9 @@ RSpec.describe Broadlistening::Steps::Aggregation do
         context.comments << Broadlistening::Comment.new(id: "4", body: "空のコメント", proposal_id: "123")
         step.execute
 
-        expect(context.result[:comments]).to have_key("1")
-        expect(context.result[:comments]).not_to have_key("4")
+        result_h = context.result.to_h
+        expect(result_h[:comments]).to have_key("1")
+        expect(result_h[:comments]).not_to have_key("4")
       end
     end
   end
@@ -269,7 +271,7 @@ RSpec.describe Broadlistening::Steps::Aggregation do
   describe "compatibility with Kouchou-AI output format" do
     let(:result) do
       step.execute
-      context.result
+      context.result.to_h
     end
 
     it "matches the expected JSON structure" do
@@ -320,13 +322,15 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
     it "includes attributes when present" do
       step.execute
-      arg_with_attrs = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+      result_h = context.result.to_h
+      arg_with_attrs = result_h[:arguments].find { |a| a[:arg_id] == "A1_0" }
       expect(arg_with_attrs[:attributes]).to eq({ "age" => "30代", "region" => "東京" })
     end
 
     it "does not include attributes key when not present" do
       step.execute
-      arg_without_attrs = context.result[:arguments].find { |a| a[:arg_id] == "A2_0" }
+      result_h = context.result.to_h
+      arg_without_attrs = result_h[:arguments].find { |a| a[:arg_id] == "A2_0" }
       expect(arg_without_attrs).not_to have_key(:attributes)
     end
   end
@@ -380,13 +384,13 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
     it "builds propertyMap with property names as keys" do
       step_with_properties.execute
-      property_map = context.result[:propertyMap]
+      property_map = context.result.to_h[:propertyMap]
       expect(property_map.keys).to match_array(%w[source age])
     end
 
     it "maps arg_id to property values" do
       step_with_properties.execute
-      property_map = context.result[:propertyMap]
+      property_map = context.result.to_h[:propertyMap]
       expect(property_map["source"]["A1_0"]).to eq("twitter")
       expect(property_map["source"]["A2_0"]).to eq("facebook")
       expect(property_map["age"]["A1_0"]).to eq(35)
@@ -394,13 +398,13 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
     it "handles nil property values" do
       step_with_properties.execute
-      property_map = context.result[:propertyMap]
+      property_map = context.result.to_h[:propertyMap]
       expect(property_map["age"]["A2_0"]).to be_nil
     end
 
     it "does not include arguments without properties in propertyMap" do
       step_with_properties.execute
-      property_map = context.result[:propertyMap]
+      property_map = context.result.to_h[:propertyMap]
       expect(property_map["source"]).not_to have_key("A3_0")
       expect(property_map["age"]).not_to have_key("A3_0")
     end
@@ -408,7 +412,7 @@ RSpec.describe Broadlistening::Steps::Aggregation do
     context "when no hidden_properties configured" do
       it "returns empty propertyMap" do
         step.execute
-        expect(context.result[:propertyMap]).to eq({})
+        expect(context.result.to_h[:propertyMap]).to eq({})
       end
     end
   end
@@ -448,13 +452,15 @@ RSpec.describe Broadlistening::Steps::Aggregation do
 
       it "includes url when present" do
         step_with_source_link.execute
-        arg_with_url = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+        result_h = context.result.to_h
+        arg_with_url = result_h[:arguments].find { |a| a[:arg_id] == "A1_0" }
         expect(arg_with_url[:url]).to eq("https://example.com/comment/1")
       end
 
       it "does not include url key when not present" do
         step_with_source_link.execute
-        arg_without_url = context.result[:arguments].find { |a| a[:arg_id] == "A2_0" }
+        result_h = context.result.to_h
+        arg_without_url = result_h[:arguments].find { |a| a[:arg_id] == "A2_0" }
         expect(arg_without_url).not_to have_key(:url)
       end
     end
@@ -462,7 +468,8 @@ RSpec.describe Broadlistening::Steps::Aggregation do
     context "when enable_source_link is false (default)" do
       it "does not include url even when present in argument" do
         step.execute
-        arg_with_url = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+        result_h = context.result.to_h
+        arg_with_url = result_h[:arguments].find { |a| a[:arg_id] == "A1_0" }
         expect(arg_with_url).not_to have_key(:url)
       end
     end

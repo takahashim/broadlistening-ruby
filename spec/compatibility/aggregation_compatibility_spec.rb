@@ -70,12 +70,12 @@ RSpec.describe "Aggregation Compatibility" do
 
     let(:labels) do
       python_labels_csv.each_with_object({}) do |row, hash|
-        hash[row["id"]] = {
+        hash[row["id"]] = Broadlistening::ClusterLabel.new(
           cluster_id: row["id"],
           level: row["level"].to_i,
           label: row["label"],
           description: row["description"]
-        }
+        )
       end
     end
 
@@ -105,7 +105,7 @@ RSpec.describe "Aggregation Compatibility" do
 
     let(:ruby_result) do
       ruby_step.execute
-      context.result
+      context.result.to_h
     end
 
     describe "Top-level structure" do

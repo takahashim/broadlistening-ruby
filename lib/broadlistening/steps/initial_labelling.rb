@@ -13,7 +13,7 @@ module Broadlistening
 
         labels = label_clusters_in_parallel(context.arguments, max_level, cluster_ids)
 
-        context.initial_labels = labels.to_h { |l| [ l[:cluster_id], l ] }
+        context.initial_labels = labels.to_h { |l| [ l.cluster_id, l ] }
         context
       end
 
@@ -62,23 +62,18 @@ module Broadlistening
 
       def parse_label_response(response, level, cluster_id)
         parsed = JSON.parse(response)
-        {
+        ClusterLabel.new(
           cluster_id: "#{level}_#{cluster_id}",
           level: level,
           label: parsed["label"] || "グループ#{cluster_id}",
           description: parsed["description"] || ""
-        }
+        )
       rescue JSON::ParserError
         default_label(level, cluster_id)
       end
 
       def default_label(level, cluster_id)
-        {
-          cluster_id: "#{level}_#{cluster_id}",
-          level: level,
-          label: "グループ#{cluster_id}",
-          description: ""
-        }
+        ClusterLabel.default(level, cluster_id)
       end
     end
   end

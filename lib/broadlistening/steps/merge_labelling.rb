@@ -12,7 +12,7 @@ module Broadlistening
         levels = context.cluster_results.keys.sort.reverse
         levels[1..].each do |level|
           parent_labels = merge_labels_for_level(context.arguments, all_labels, context.cluster_results, level)
-          parent_labels.each { |l| all_labels[l[:cluster_id]] = l }
+          parent_labels.each { |l| all_labels[l.cluster_id] = l }
         end
 
         context.labels = all_labels
@@ -42,7 +42,7 @@ module Broadlistening
 
         return default_label(level, parent_cluster_id) if child_labels.empty?
 
-        input = child_labels.map { |l| "- #{l[:label]}: #{l[:description]}" }.join("\n")
+        input = child_labels.map { |l| "- #{l.label}: #{l.description}" }.join("\n")
 
         response = llm_client.chat(
           system: config.prompts[:merge_labelling],
@@ -70,23 +70,18 @@ module Broadlistening
 
       def parse_label_response(response, level, cluster_id)
         parsed = JSON.parse(response)
-        {
+        ClusterLabel.new(
           cluster_id: "#{level}_#{cluster_id}",
           level: level,
           label: parsed["label"] || "グループ#{cluster_id}",
           description: parsed["description"] || ""
-        }
+        )
       rescue JSON::ParserError
         default_label(level, cluster_id)
       end
 
       def default_label(level, cluster_id)
-        {
-          cluster_id: "#{level}_#{cluster_id}",
-          level: level,
-          label: "グループ#{cluster_id}",
-          description: ""
-        }
+        ClusterLabel.default(level, cluster_id)
       end
     end
   end

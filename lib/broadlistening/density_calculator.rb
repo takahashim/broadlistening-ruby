@@ -23,7 +23,7 @@ module Broadlistening
 
       # Calculate density for multiple clusters and compute rank percentiles
       # @param clusters [Hash] cluster_id => { points: [[x, y], ...], level: Integer }
-      # @return [Hash] cluster_id => { density: Float, density_rank: Integer, density_rank_percentile: Float }
+      # @return [Hash{String => DensityInfo}] cluster_id => DensityInfo
       def calculate_with_ranks(clusters)
         # Calculate density for each cluster
         densities = clusters.transform_values do |cluster_data|
@@ -44,11 +44,11 @@ module Broadlistening
 
           sorted.each_with_index do |(cluster_id, data), index|
             rank = index + 1
-            result[cluster_id] = {
+            result[cluster_id] = DensityInfo.new(
               density: data[:density],
               density_rank: rank,
               density_rank_percentile: rank.to_f / level_size
-            }
+            )
           end
         end
 

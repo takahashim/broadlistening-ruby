@@ -117,13 +117,13 @@ module Broadlistening
           arguments: @arguments.map(&:to_clustering_h)
         }
       when :initial_labelling
-        { initial_labels: @initial_labels }
+        { initial_labels: serialize_labels(@initial_labels) }
       when :merge_labelling
-        { labels: @labels }
+        { labels: serialize_labels(@labels) }
       when :overview
         { overview: @overview }
       when :aggregation
-        @result
+        @result&.to_h
       end
     end
 
@@ -136,9 +136,9 @@ module Broadlistening
       when :clustering
         merge_clustering_data(data)
       when :initial_labelling
-        @initial_labels = data[:initial_labels] if data[:initial_labels]
+        @initial_labels = load_labels_hash(data[:initial_labels]) if data[:initial_labels]
       when :merge_labelling
-        @labels = data[:labels] if data[:labels]
+        @labels = load_labels_hash(data[:labels]) if data[:labels]
       when :overview
         @overview = data[:overview] if data[:overview]
       end
@@ -175,6 +175,16 @@ module Broadlistening
         arg.y = cluster_data[:y]
         arg.cluster_ids = cluster_data[:cluster_ids]
       end
+    end
+
+    def load_labels_hash(labels_data)
+      labels_data.transform_values do |label_hash|
+        ClusterLabel.from_hash(label_hash)
+      end
+    end
+
+    def serialize_labels(labels)
+      labels.transform_values(&:to_h)
     end
   end
 end

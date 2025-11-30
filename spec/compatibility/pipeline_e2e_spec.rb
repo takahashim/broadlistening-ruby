@@ -81,12 +81,12 @@ RSpec.describe "Pipeline E2E Compatibility" do
     # Mock labels from Python fixtures
     let(:mock_labels) do
       python_labels_csv.each_with_object({}) do |row, hash|
-        hash[row["id"]] = {
+        hash[row["id"]] = Broadlistening::ClusterLabel.new(
           cluster_id: row["id"],
           level: row["level"].to_i,
           label: row["label"],
           description: row["description"]
-        }
+        )
       end
     end
 
@@ -180,7 +180,7 @@ RSpec.describe "Pipeline E2E Compatibility" do
         aggregation_step = Broadlistening::Steps::Aggregation.new(config, context)
         aggregation_step.execute
 
-        result = context.result
+        result = context.result.to_h
 
         # Validate structure
         expect(result).to have_key(:arguments)
@@ -208,7 +208,7 @@ RSpec.describe "Pipeline E2E Compatibility" do
         aggregation_step = Broadlistening::Steps::Aggregation.new(config, context)
         aggregation_step.execute
 
-        result = context.result
+        result = context.result.to_h
 
         # Compare with Python output
         expect(result[:arguments].size).to eq(python_result["arguments"].size)

@@ -329,12 +329,12 @@ RSpec.describe "Edge Cases Compatibility" do
 
     let(:labels) do
       {
-        "1_0" => {
+        "1_0" => Broadlistening::ClusterLabel.new(
           cluster_id: "1_0",
           level: 1,
           label: "Label with \"special\" chars",
           description: "Description with\nnewlines"
-        }
+        )
       }
     end
 
@@ -356,14 +356,15 @@ RSpec.describe "Edge Cases Compatibility" do
     it "produces valid JSON with special characters" do
       aggregation_step.execute
 
-      json_string = JSON.generate(context.result)
+      json_string = JSON.generate(context.result.to_h)
       expect { JSON.parse(json_string) }.not_to raise_error
     end
 
     it "preserves floating point precision" do
       aggregation_step.execute
 
-      arg = context.result[:arguments].first
+      result_h = context.result.to_h
+      arg = result_h[:arguments].first
       expect(arg[:x]).to be_a(Float)
       expect(arg[:y]).to be_a(Float)
     end

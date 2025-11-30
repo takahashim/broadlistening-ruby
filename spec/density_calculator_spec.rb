@@ -70,34 +70,34 @@ RSpec.describe Broadlistening::DensityCalculator do
     it "calculates density for each cluster" do
       result = described_class.calculate_with_ranks(clusters)
 
-      expect(result["1_0"][:density]).to be_a(Float)
-      expect(result["1_1"][:density]).to be_a(Float)
-      expect(result["2_0"][:density]).to be_a(Float)
-      expect(result["2_1"][:density]).to be_a(Float)
+      expect(result["1_0"].density).to be_a(Float)
+      expect(result["1_1"].density).to be_a(Float)
+      expect(result["2_0"].density).to be_a(Float)
+      expect(result["2_1"].density).to be_a(Float)
     end
 
     it "ranks clusters within each level" do
       result = described_class.calculate_with_ranks(clusters)
 
       # Level 1: 1_1 is denser (higher density) -> rank 1
-      expect(result["1_1"][:density_rank]).to eq(1)
-      expect(result["1_0"][:density_rank]).to eq(2)
+      expect(result["1_1"].density_rank).to eq(1)
+      expect(result["1_0"].density_rank).to eq(2)
 
       # Level 2: 2_1 is denser -> rank 1
-      expect(result["2_1"][:density_rank]).to eq(1)
-      expect(result["2_0"][:density_rank]).to eq(2)
+      expect(result["2_1"].density_rank).to eq(1)
+      expect(result["2_0"].density_rank).to eq(2)
     end
 
     it "calculates density_rank_percentile within each level" do
       result = described_class.calculate_with_ranks(clusters)
 
       # Level 1 has 2 clusters: ranks 1, 2 -> percentiles 0.5, 1.0
-      expect(result["1_1"][:density_rank_percentile]).to eq(0.5)
-      expect(result["1_0"][:density_rank_percentile]).to eq(1.0)
+      expect(result["1_1"].density_rank_percentile).to eq(0.5)
+      expect(result["1_0"].density_rank_percentile).to eq(1.0)
 
       # Level 2 has 2 clusters: ranks 1, 2 -> percentiles 0.5, 1.0
-      expect(result["2_1"][:density_rank_percentile]).to eq(0.5)
-      expect(result["2_0"][:density_rank_percentile]).to eq(1.0)
+      expect(result["2_1"].density_rank_percentile).to eq(0.5)
+      expect(result["2_0"].density_rank_percentile).to eq(1.0)
     end
 
     it "handles single cluster in a level" do
@@ -106,8 +106,8 @@ RSpec.describe Broadlistening::DensityCalculator do
       }
       result = described_class.calculate_with_ranks(single_cluster)
 
-      expect(result["1_0"][:density_rank]).to eq(1)
-      expect(result["1_0"][:density_rank_percentile]).to eq(1.0)
+      expect(result["1_0"].density_rank).to eq(1)
+      expect(result["1_0"].density_rank_percentile).to eq(1.0)
     end
 
     it "returns empty hash for empty input" do

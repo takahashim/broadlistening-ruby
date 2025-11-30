@@ -54,11 +54,11 @@ module Broadlistening
     def initialize_clusters
       clusters = {}
       @n_original_clusters.times do |i|
-        clusters[i] = {
+        clusters[i] = ClusterInfo.new(
           centroid: @centroids[i, true].to_a,
           size: @labels.count(i),
           members: [ i ]
-        }
+        )
       end
       clusters
     end
@@ -70,7 +70,7 @@ module Broadlistening
       cluster_ids = clusters.keys
       cluster_ids.each_with_index do |c1_id, i|
         cluster_ids[(i + 1)..].each do |c2_id|
-          dist = ward_distance(clusters[c1_id], clusters[c2_id])
+          dist = clusters[c1_id].ward_distance_to(clusters[c2_id])
           if dist < min_dist
             min_dist = dist
             min_pair = [ c1_id, c2_id ]
@@ -81,44 +81,15 @@ module Broadlistening
       min_pair
     end
 
-    def ward_distance(cluster1, cluster2)
-      # Ward法: マージ時の分散増加量を計算
-      # d(i,j) = sqrt(2 * n_i * n_j / (n_i + n_j)) * ||c_i - c_j||
-      n1 = cluster1[:size]
-      n2 = cluster2[:size]
-      c1 = cluster1[:centroid]
-      c2 = cluster2[:centroid]
-
-      # ユークリッド距離の2乗
-      dist_sq = c1.zip(c2).sum { |a, b| (a - b)**2 }
-
-      # Ward距離
-      Math.sqrt(2.0 * n1 * n2 / (n1 + n2) * dist_sq)
-    end
-
     def merge_ward_clusters!(clusters, c1_id, c2_id)
       c1 = clusters[c1_id]
       c2 = clusters[c2_id]
-
-      # 新しい重心を計算（サイズで重み付け）
-      n1 = c1[:size]
-      n2 = c2[:size]
-      new_size = n1 + n2
-
-      new_centroid = c1[:centroid].zip(c2[:centroid]).map do |v1, v2|
-        (v1 * n1 + v2 * n2) / new_size
-      end
 
       # マージしたクラスタを作成（小さいIDを使用）
       merged_id = [ c1_id, c2_id ].min
       removed_id = [ c1_id, c2_id ].max
 
-      clusters[merged_id] = {
-        centroid: new_centroid,
-        size: new_size,
-        members: c1[:members] + c2[:members]
-      }
-
+      clusters[merged_id] = c1.merge_with(c2)
       clusters.delete(removed_id)
     end
 
@@ -126,8 +97,8 @@ module Broadlistening
       # 各元クラスタIDから最終クラスタIDへのマッピングを構築
       original_to_final = {}
       clusters.each_value do |cluster|
-        final_id = cluster[:members].min
-        cluster[:members].each do |original_id|
+        final_id = cluster.min_member
+        cluster.members.each do |original_id|
           original_to_final[original_id] = final_id
         end
       end

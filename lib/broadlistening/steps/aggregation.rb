@@ -9,18 +9,16 @@ module Broadlistening
 
       # Output format compatible with Kouchou-AI Python implementation
       def execute
-        result = {
+        context.result = PipelineResult.new(
           arguments: build_arguments,
           clusters: build_clusters,
           comments: build_comments,
-          propertyMap: build_property_map,
+          property_map: build_property_map,
           translations: build_translations,
           overview: context.overview,
           config: config.to_h,
           comment_num: context.comments.size
-        }
-
-        context.result = result
+        )
 
         export_csv if config.is_pubcom && context.output_dir
 
@@ -36,42 +34,39 @@ module Broadlistening
       end
 
       def build_single_argument(arg)
-        result = {
+        ResultArgument.new(
           arg_id: arg.arg_id,
           argument: arg.argument,
           comment_id: arg.comment_id_int,
           x: arg.x&.to_f,
           y: arg.y&.to_f,
           p: 0,
-          cluster_ids: arg.cluster_ids
-        }
-
-        result[:attributes] = arg.attributes if arg.attributes
-        result[:url] = arg.url if config.enable_source_link && arg.url
-
-        result
+          cluster_ids: arg.cluster_ids,
+          attributes: arg.attributes,
+          url: config.enable_source_link ? arg.url : nil
+        )
       end
 
       def build_clusters
-        clusters = [ root_cluster ]
+        clusters = [ ResultCluster.root(context.arguments.size) ]
         density_data = calculate_density_data
 
         context.labels.each_value do |label|
-          cluster_id = label[:cluster_id]
+          cluster_id = label.cluster_id
           density_info = density_data[cluster_id]
 
-          clusters << {
-            level: label[:level],
+          clusters << ResultCluster.new(
+            level: label.level,
             id: cluster_id,
-            label: label[:label],
-            takeaway: label[:description] || "",
+            label: label.label,
+            takeaway: label.description || "",
             value: count_arguments_in_cluster(cluster_id),
             parent: find_parent_cluster(label),
-            density_rank_percentile: density_info&.dig(:density_rank_percentile)
-          }
+            density_rank_percentile: density_info&.density_rank_percentile
+          )
         end
 
-        clusters.sort_by { |c| [ c[:level], c[:id] ] }
+        clusters
       end
 
       def calculate_density_data
@@ -81,7 +76,7 @@ module Broadlistening
         cluster_data = {}
 
         context.labels.each_value do |label|
-          cluster_id = label[:cluster_id]
+          cluster_id = label.cluster_id
           points = context.arguments.select { |arg| arg.in_cluster?(cluster_id) }
                                     .map { |arg| [ arg.x, arg.y ] }
                                     .reject { |p| p.any?(&:nil?) }
@@ -90,7 +85,7 @@ module Broadlistening
 
           cluster_data[cluster_id] = {
             points: points,
-            level: label[:level]
+            level: label.level
           }
         end
 
@@ -99,29 +94,17 @@ module Broadlistening
         DensityCalculator.calculate_with_ranks(cluster_data)
       end
 
-      def root_cluster
-        {
-          level: 0,
-          id: "0",
-          label: "全体",
-          takeaway: "",
-          value: context.arguments.size,
-          parent: "",
-          density_rank_percentile: nil
-        }
-      end
-
       def count_arguments_in_cluster(cluster_id)
         context.arguments.count { |arg| arg.in_cluster?(cluster_id) }
       end
 
       def find_parent_cluster(label)
-        return "0" if label[:level] == 1
+        return "0" if label.level == 1
 
-        parent_level = label[:level] - 1
+        parent_level = label.level - 1
 
         # Find an argument that belongs to this cluster
-        arg_idx = context.arguments.index { |arg| arg.in_cluster?(label[:cluster_id]) }
+        arg_idx = context.arguments.index { |arg| arg.in_cluster?(label.cluster_id) }
         return "0" unless arg_idx
 
         parent_cluster_num = context.cluster_results[parent_level][arg_idx]
@@ -139,7 +122,7 @@ module Broadlistening
           comment_id = comment.id.to_i
           next unless comments_with_args.include?(comment_id)
 
-          result[comment_id.to_s] = { comment: comment.body }
+          result[comment_id.to_s] = ResultComment.new(comment: comment.body)
         end
 
         result
@@ -227,8 +210,8 @@ module Broadlistening
 
       def build_level1_label_map
         context.labels
-          .select { |_, label| label[:level] == 1 }
-          .transform_values { |label| label[:label] }
+          .select { |_, label| label.level == 1 }
+          .transform_values { |label| label.label }
           .transform_keys(&:to_s)
       end
 

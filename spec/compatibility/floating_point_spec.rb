@@ -90,7 +90,7 @@ RSpec.describe "Floating Point Precision Compatibility" do
           Broadlistening::Comment.new(id: "3", body: "C3", proposal_id: "test")
         ]
         ctx.arguments = arguments
-        ctx.labels = { "1_0" => { cluster_id: "1_0", level: 1, label: "L", description: "D" } }
+        ctx.labels = { "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "L", description: "D") }
         ctx.cluster_results = { 1 => [ 0, 0, 0 ] }
         ctx.overview = "Overview"
         ctx
@@ -100,7 +100,8 @@ RSpec.describe "Floating Point Precision Compatibility" do
         step = Broadlistening::Steps::Aggregation.new(config, context)
         step.execute
 
-        arg = context.result[:arguments].find { |a| a[:arg_id] == "A1_0" }
+        result_h = context.result.to_h
+        arg = result_h[:arguments].find { |a| a[:arg_id] == "A1_0" }
         expect(arg[:x]).to be_within(1e-10).of(1.2345678901234567)
         expect(arg[:y]).to be_within(1e-10).of(-9.8765432109876543)
       end
@@ -109,7 +110,8 @@ RSpec.describe "Floating Point Precision Compatibility" do
         step = Broadlistening::Steps::Aggregation.new(config, context)
         step.execute
 
-        arg = context.result[:arguments].find { |a| a[:arg_id] == "A3_0" }
+        result_h = context.result.to_h
+        arg = result_h[:arguments].find { |a| a[:arg_id] == "A3_0" }
         expect(arg[:x]).to eq(0.0)
         expect(arg[:y]).to eq(0.0)
       end
@@ -118,7 +120,7 @@ RSpec.describe "Floating Point Precision Compatibility" do
         step = Broadlistening::Steps::Aggregation.new(config, context)
         step.execute
 
-        json_str = JSON.generate(context.result)
+        json_str = JSON.generate(context.result.to_h)
         parsed = JSON.parse(json_str)
 
         parsed["arguments"].each do |arg|
@@ -256,9 +258,9 @@ RSpec.describe "Floating Point Precision Compatibility" do
       ]
       ctx.arguments = arguments
       ctx.labels = {
-        "1_0" => { cluster_id: "1_0", level: 1, label: "L1", description: "D1" },
-        "2_0" => { cluster_id: "2_0", level: 2, label: "L2a", description: "D2a" },
-        "2_1" => { cluster_id: "2_1", level: 2, label: "L2b", description: "D2b" }
+        "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "L1", description: "D1"),
+        "2_0" => Broadlistening::ClusterLabel.new(cluster_id: "2_0", level: 2, label: "L2a", description: "D2a"),
+        "2_1" => Broadlistening::ClusterLabel.new(cluster_id: "2_1", level: 2, label: "L2b", description: "D2b")
       }
       ctx.cluster_results = { 1 => [ 0, 0 ], 2 => [ 0, 1 ] }
       ctx.overview = "Overview"
@@ -269,7 +271,7 @@ RSpec.describe "Floating Point Precision Compatibility" do
       step = Broadlistening::Steps::Aggregation.new(config, context)
       step.execute
 
-      result = context.result
+      result = context.result.to_h
 
       # Arguments
       result[:arguments].each do |arg|
