@@ -240,7 +240,7 @@ The pipeline result is a Hash with the following structure:
 
 ### Installing umappp
 
-umappp includes C++ native extensions and requires a C++ compiler:
+[umappp](https://rubygems.org/gems/umappp) includes C++ native extensions and requires a C++ compiler:
 
 ```bash
 # macOS

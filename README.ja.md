@@ -240,7 +240,7 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
 
 ### umappp のインストール
 
-umappp は C++ ネイティブ拡張を含むため、インストール時に C++ コンパイラが必要です：
+[umappp](https://rubygems.org/gems/umappp) は C++ ネイティブ拡張を含むため、インストール時に C++ コンパイラが必要です：
 
 ```bash
 # macOS
