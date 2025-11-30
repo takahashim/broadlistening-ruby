@@ -34,7 +34,7 @@ module Broadlistening
       end
 
       def build_single_argument(arg)
-        ResultArgument.new(
+        PipelineResult::Argument.new(
           arg_id: arg.arg_id,
           argument: arg.argument,
           comment_id: arg.comment_id_int,
@@ -48,14 +48,14 @@ module Broadlistening
       end
 
       def build_clusters
-        clusters = [ ResultCluster.root(context.arguments.size) ]
+        clusters = [ PipelineResult::Cluster.root(context.arguments.size) ]
         density_data = calculate_density_data
 
         context.labels.each_value do |label|
           cluster_id = label.cluster_id
           density_info = density_data[cluster_id]
 
-          clusters << ResultCluster.new(
+          clusters << PipelineResult::Cluster.new(
             level: label.level,
             id: cluster_id,
             label: label.label,
@@ -122,7 +122,7 @@ module Broadlistening
           comment_id = comment.id.to_i
           next unless comments_with_args.include?(comment_id)
 
-          result[comment_id.to_s] = ResultComment.new(comment: comment.body)
+          result[comment_id.to_s] = PipelineResult::Comment.new(comment: comment.body)
         end
 
         result
