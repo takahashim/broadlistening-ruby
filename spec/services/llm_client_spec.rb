@@ -11,6 +11,10 @@ RSpec.describe Broadlistening::Services::LlmClient do
   end
   let(:client) { described_class.new(config) }
 
+  before do
+    allow_any_instance_of(described_class).to receive(:sleep)
+  end
+
   describe "#chat" do
     let(:system_prompt) { "You are a helpful assistant." }
     let(:user_message) { "Hello, how are you?" }
@@ -253,7 +257,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
       let(:config) do
         Broadlistening::Config.new(
           api_key: "azure-api-key",
-          provider: "azure",
+          provider: :azure,
           api_base_url: "https://my-resource.openai.azure.com",
           azure_api_version: "2024-02-15-preview"
         )
@@ -278,7 +282,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
       let(:config) do
         Broadlistening::Config.new(
           api_key: "gemini-api-key",
-          provider: "gemini",
+          provider: :gemini,
           model: "gemini-2.0-flash"
         )
       end
@@ -302,7 +306,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
       let(:config) do
         Broadlistening::Config.new(
           api_key: "openrouter-api-key",
-          provider: "openrouter",
+          provider: :openrouter,
           model: "anthropic/claude-3-haiku"
         )
       end
@@ -325,7 +329,7 @@ RSpec.describe Broadlistening::Services::LlmClient do
     context "with local provider" do
       let(:config) do
         Broadlistening::Config.new(
-          provider: "local",
+          provider: :local,
           local_llm_address: "localhost:11434",
           model: "llama3"
         )

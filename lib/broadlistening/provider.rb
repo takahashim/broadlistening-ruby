@@ -3,30 +3,30 @@
 module Broadlistening
   class Provider
     PROVIDERS = {
-      "openai" => {
+      openai: {
         api_key_env: "OPENAI_API_KEY",
         model: "gpt-4o-mini",
         embedding_model: "text-embedding-3-small"
       },
-      "azure" => {
+      azure: {
         api_key_env: "AZURE_OPENAI_API_KEY",
         base_url_env: "AZURE_OPENAI_URI",
         model: "gpt-4o-mini",
         embedding_model: "text-embedding-3-small"
       },
-      "gemini" => {
+      gemini: {
         api_key_env: "GEMINI_API_KEY",
         base_url: "https://generativelanguage.googleapis.com/v1beta/openai/",
         model: "gemini-2.0-flash",
         embedding_model: "text-embedding-004"
       },
-      "openrouter" => {
+      openrouter: {
         api_key_env: "OPENROUTER_API_KEY",
         base_url: "https://openrouter.ai/api/v1",
         model: "gpt-4o-mini",
         embedding_model: "text-embedding-3-small"
       },
-      "local" => {
+      local: {
         api_key: "not-needed",
         model: "gpt-4o-mini",
         embedding_model: "text-embedding-3-small"
@@ -54,7 +54,7 @@ module Broadlistening
     end
 
     def base_url
-      return "http://#{@local_llm_address}/v1" if @name == "local"
+      return "http://#{@local_llm_address}/v1" if @name == :local
 
       @config[:base_url] || (@config[:base_url_env] && ENV.fetch(@config[:base_url_env], nil))
     end
@@ -68,15 +68,15 @@ module Broadlistening
     end
 
     def requires_api_key?
-      @name != "local"
+      @name != :local
     end
 
     def requires_base_url?
-      @name == "azure"
+      @name == :azure
     end
 
     def azure?
-      @name == "azure"
+      @name == :azure
     end
 
     def build_openai_client(api_key:, base_url:, azure_api_version: nil)

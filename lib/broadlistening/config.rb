@@ -48,7 +48,7 @@ module Broadlistening
     def initialize(options = {})
       @local_llm_address = options[:local_llm_address] || ENV.fetch("LOCAL_LLM_ADDRESS", "localhost:11434")
       @provider_obj = Provider.new(
-        options[:provider] || "openai",
+        options[:provider]&.to_sym || :openai,
         local_llm_address: @local_llm_address
       )
       @provider = @provider_obj.name
