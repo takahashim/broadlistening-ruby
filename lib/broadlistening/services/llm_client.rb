@@ -8,7 +8,7 @@ module Broadlistening
 
       def initialize(config)
         @config = config
-        @client = OpenAI::Client.new(access_token: config.api_key)
+        @client = build_client
       end
 
       def chat(system:, user:, json_mode: false)
@@ -31,6 +31,27 @@ module Broadlistening
       end
 
       private
+
+      def build_client
+        case @config.provider
+        when "openai"
+          OpenAI::Client.new(access_token: @config.api_key)
+        when "azure"
+          OpenAI::Client.new(
+            access_token: @config.api_key,
+            uri_base: @config.api_base_url,
+            api_type: :azure,
+            api_version: @config.azure_api_version
+          )
+        when "gemini", "openrouter", "local"
+          OpenAI::Client.new(
+            access_token: @config.api_key,
+            uri_base: @config.api_base_url
+          )
+        else
+          raise ConfigurationError, "Unknown provider: #{@config.provider}"
+        end
+      end
 
       def build_chat_params(system, user, json_mode)
         params = {
@@ -66,11 +87,9 @@ module Broadlistening
         begin
           yield
         rescue Faraday::ClientError => e
-          # Client errors (4xx) should not be retried - they indicate invalid requests
           raise LlmError, "LLM API error: #{e.message}"
         rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError,
                Net::OpenTimeout, Errno::ECONNRESET => e
-          # Server errors and connection issues can be retried
           retries += 1
           raise LlmError, "LLM API request failed after #{MAX_RETRIES} retries: #{e.message}" if retries > MAX_RETRIES
 

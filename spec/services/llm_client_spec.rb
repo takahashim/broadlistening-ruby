@@ -244,4 +244,106 @@ RSpec.describe Broadlistening::Services::LlmClient do
       end
     end
   end
+
+  describe "provider support" do
+    let(:system_prompt) { "You are a helpful assistant." }
+    let(:user_message) { "Hello" }
+
+    context "with Azure provider" do
+      let(:config) do
+        Broadlistening::Config.new(
+          api_key: "azure-api-key",
+          provider: "azure",
+          api_base_url: "https://my-resource.openai.azure.com",
+          azure_api_version: "2024-02-15-preview"
+        )
+      end
+
+      before do
+        stub_request(:post, "https://my-resource.openai.azure.com/chat/completions?api-version=2024-02-15-preview")
+          .to_return(
+            status: 200,
+            body: { "choices" => [ { "message" => { "content" => "Azure response" } } ] }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "sends requests to Azure endpoint" do
+        result = client.chat(system: system_prompt, user: user_message)
+        expect(result).to eq("Azure response")
+      end
+    end
+
+    context "with Gemini provider" do
+      let(:config) do
+        Broadlistening::Config.new(
+          api_key: "gemini-api-key",
+          provider: "gemini",
+          model: "gemini-2.0-flash"
+        )
+      end
+
+      before do
+        stub_request(:post, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+          .to_return(
+            status: 200,
+            body: { "choices" => [ { "message" => { "content" => "Gemini response" } } ] }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "sends requests to Gemini endpoint" do
+        result = client.chat(system: system_prompt, user: user_message)
+        expect(result).to eq("Gemini response")
+      end
+    end
+
+    context "with OpenRouter provider" do
+      let(:config) do
+        Broadlistening::Config.new(
+          api_key: "openrouter-api-key",
+          provider: "openrouter",
+          model: "anthropic/claude-3-haiku"
+        )
+      end
+
+      before do
+        stub_request(:post, "https://openrouter.ai/api/v1/chat/completions")
+          .to_return(
+            status: 200,
+            body: { "choices" => [ { "message" => { "content" => "OpenRouter response" } } ] }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "sends requests to OpenRouter endpoint" do
+        result = client.chat(system: system_prompt, user: user_message)
+        expect(result).to eq("OpenRouter response")
+      end
+    end
+
+    context "with local provider" do
+      let(:config) do
+        Broadlistening::Config.new(
+          provider: "local",
+          local_llm_address: "localhost:11434",
+          model: "llama3"
+        )
+      end
+
+      before do
+        stub_request(:post, "http://localhost:11434/v1/chat/completions")
+          .to_return(
+            status: 200,
+            body: { "choices" => [ { "message" => { "content" => "Local LLM response" } } ] }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "sends requests to local LLM endpoint" do
+        result = client.chat(system: system_prompt, user: user_message)
+        expect(result).to eq("Local LLM response")
+      end
+    end
+  end
 end
