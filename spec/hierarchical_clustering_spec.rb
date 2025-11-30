@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Broadlistening::Services::HierarchicalClustering do
+RSpec.describe Broadlistening::HierarchicalClustering do
   describe ".merge" do
     context "with simple centroids" do
       let(:centroids) do
@@ -170,7 +170,7 @@ RSpec.describe Broadlistening::Services::HierarchicalClustering do
       20.times { |i| data << [ 20.0 + i * 0.1, 0.0 ] }
 
       # Run KMeans with 6 clusters
-      kmeans = Broadlistening::Services::KMeans.new(n_clusters: 6, random_state: 42)
+      kmeans = Broadlistening::KMeans.new(n_clusters: 6, random_state: 42)
       kmeans.fit(data)
 
       # Merge down to 3 clusters

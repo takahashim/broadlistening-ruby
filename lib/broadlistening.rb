@@ -21,10 +21,9 @@ require_relative "broadlistening/compatibility"
 require_relative "broadlistening/context"
 require_relative "broadlistening/pipeline"
 
-# Services
-require_relative "broadlistening/services/llm_client"
-require_relative "broadlistening/services/kmeans"
-require_relative "broadlistening/services/hierarchical_clustering"
+require_relative "broadlistening/llm_client"
+require_relative "broadlistening/kmeans"
+require_relative "broadlistening/hierarchical_clustering"
 
 # Steps
 require_relative "broadlistening/steps/base_step"

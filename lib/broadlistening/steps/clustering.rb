@@ -52,7 +52,7 @@ module Broadlistening
         max_clusters = adjusted_cluster_nums.last
 
         # Perform KMeans with max clusters
-        kmeans = Services::KMeans.new(
+        kmeans = KMeans.new(
           n_clusters: max_clusters,
           random_state: 42
         )
@@ -66,7 +66,7 @@ module Broadlistening
         results = {}
 
         cluster_nums[0..-2].each_with_index do |n_target, level|
-          merged_labels = Services::HierarchicalClustering.merge(
+          merged_labels = HierarchicalClustering.merge(
             kmeans.centroids,
             kmeans.labels,
             n_target

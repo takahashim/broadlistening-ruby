@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Broadlistening::Services::LlmClient do
+RSpec.describe Broadlistening::LlmClient do
   let(:api_key) { "test-api-key" }
   let(:config) do
     Broadlistening::Config.new(

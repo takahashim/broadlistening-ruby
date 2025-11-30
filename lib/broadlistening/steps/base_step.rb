@@ -21,7 +21,7 @@ module Broadlistening
       protected
 
       def llm_client
-        @llm_client ||= Services::LlmClient.new(config)
+        @llm_client ||= LlmClient.new(config)
       end
 
       def instrument(event_name, payload = {}, &block)

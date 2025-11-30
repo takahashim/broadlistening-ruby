@@ -88,7 +88,7 @@ RSpec.describe "Step Notifications" do
 
       step = described_class.new(config, context)
 
-      mock_client = instance_double(Broadlistening::Services::LlmClient)
+      mock_client = instance_double(Broadlistening::LlmClient)
       allow(step).to receive(:llm_client).and_return(mock_client)
       allow(mock_client).to receive(:embed).and_return([ [ 0.1, 0.2 ], [ 0.3, 0.4 ] ])
 
@@ -131,7 +131,7 @@ RSpec.describe "Step Notifications" do
 
       step = described_class.new(config, context)
 
-      mock_client = instance_double(Broadlistening::Services::LlmClient)
+      mock_client = instance_double(Broadlistening::LlmClient)
       allow(step).to receive(:llm_client).and_return(mock_client)
       allow(mock_client).to receive(:chat).and_return('{"label": "Test", "description": "Test desc"}')
 
@@ -182,7 +182,7 @@ RSpec.describe "Step Notifications" do
 
       step = described_class.new(config, context)
 
-      mock_client = instance_double(Broadlistening::Services::LlmClient)
+      mock_client = instance_double(Broadlistening::LlmClient)
       allow(step).to receive(:llm_client).and_return(mock_client)
       allow(mock_client).to receive(:chat).and_return('{"label": "Merged", "description": "Merged desc"}')
 

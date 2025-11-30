@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Broadlistening::Services::KMeans do
+RSpec.describe Broadlistening::KMeans do
   describe "#fit" do
     context "with simple 2D data" do
       let(:data) do
