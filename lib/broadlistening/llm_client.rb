@@ -2,25 +2,19 @@
 
 module Broadlistening
   class LlmClient
-    # Retry configuration matching kouchou-ai Python implementation
-    # Python: wait_exponential(multiplier=3, min=3, max=20), stop_after_attempt(3)
+    ChatResult = Data.define(:content, :token_usage)
+
     MAX_RETRIES = 3
-    RETRY_BASE_INTERVAL = 3.0  # min wait time in seconds
-    RETRY_MAX_INTERVAL = 20.0  # max wait time in seconds
-    RETRY_MULTIPLIER = 3.0     # exponential multiplier
+    RETRY_BASE_INTERVAL = 3.0
+    RETRY_MAX_INTERVAL = 20.0
+    RETRY_MULTIPLIER = 3.0
 
-    # Errors that should trigger retry (transient errors)
     RETRIABLE_ERRORS = [
-      Faraday::ServerError,       # 5xx errors
-      Faraday::ConnectionFailed,  # Network connection issues
-      Faraday::TimeoutError,      # Request timeout
-      Net::OpenTimeout,           # Connection timeout
-      Errno::ECONNRESET           # Connection reset by peer
-    ].freeze
-
-    # Errors that should NOT retry (client errors)
-    NON_RETRIABLE_ERRORS = [
-      Faraday::ClientError        # 4xx errors (except rate limit)
+      Faraday::ServerError,
+      Faraday::ConnectionFailed,
+      Faraday::TimeoutError,
+      Net::OpenTimeout,
+      Errno::ECONNRESET
     ].freeze
 
     def initialize(config)
@@ -36,7 +30,12 @@ module Broadlistening
     def chat(system:, user:, json_mode: false)
       params = build_chat_params(system, user, json_mode)
       response = with_retry { @client.chat(parameters: params) }
-      extract_chat_content(response)
+      validate_response!(response)
+
+      ChatResult.new(
+        content: response.dig("choices", 0, "message", "content"),
+        token_usage: TokenUsage.from_response(response)
+      )
     end
 
     def embed(texts)
@@ -49,7 +48,8 @@ module Broadlistening
           }
         )
       end
-      extract_embeddings(response)
+      validate_response!(response)
+      response["data"].sort_by { |d| d["index"] }.map { |d| d["embedding"] }
     end
 
     private
@@ -66,16 +66,6 @@ module Broadlistening
       params
     end
 
-    def extract_chat_content(response)
-      validate_response!(response)
-      response.dig("choices", 0, "message", "content")
-    end
-
-    def extract_embeddings(response)
-      validate_response!(response)
-      response["data"].sort_by { |d| d["index"] }.map { |d| d["embedding"] }
-    end
-
     def validate_response!(response)
       return if response.is_a?(Hash) && !response["error"]
 
@@ -86,21 +76,18 @@ module Broadlistening
     def with_retry(&block)
       Retriable.retriable(
         on: RETRIABLE_ERRORS,
-        tries: MAX_RETRIES + 1,  # retriable counts initial attempt as try 1
+        tries: MAX_RETRIES + 1,
         base_interval: RETRY_BASE_INTERVAL,
         max_interval: RETRY_MAX_INTERVAL,
         multiplier: RETRY_MULTIPLIER,
-        rand_factor: 0.5,  # Add jitter (0.5-1.5x) like Python implementation
-        on_retry: method(:log_retry)
+        rand_factor: 0.5
       ) do
         begin
           block.call
         rescue Faraday::ClientError => e
-          # Check if it's a rate limit error (429) - should retry
           if rate_limit_error?(e)
-            raise Faraday::ServerError, e.message  # Convert to retriable error
+            raise Faraday::ServerError, e.message
           end
-          # Other client errors (4xx) should not retry
           raise LlmError, "LLM API error: #{e.message}"
         end
       end
@@ -109,15 +96,9 @@ module Broadlistening
     end
 
     def rate_limit_error?(error)
-      # Check for 429 status code or rate limit message
       error.message.include?("429") ||
         error.message.downcase.include?("rate limit") ||
         error.message.downcase.include?("too many requests")
-    end
-
-    def log_retry(exception, try_number, elapsed_time, next_interval)
-      # Log retry attempts for debugging (can be customized or silenced)
-      # This matches the Python logging.warning behavior
     end
   end
 end

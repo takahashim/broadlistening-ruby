@@ -83,6 +83,7 @@ module Broadlistening
     def execute_step(step_name, index, status, planner, context, output_path)
       status.start_step(step_name)
       start_time = Time.now
+      token_usage_before = context.token_usage.dup
 
       steps = @spec_loader.steps
       payload = { step: step_name, step_index: index, step_total: steps.size }
@@ -93,8 +94,12 @@ module Broadlistening
       end
 
       duration = Time.now - start_time
+      step_token_usage = TokenUsage.new(
+        input: context.token_usage.input - token_usage_before.input,
+        output: context.token_usage.output - token_usage_before.output
+      )
       params = planner.extract_current_params(step_name)
-      status.complete_step(step_name, params: params, duration: duration)
+      status.complete_step(step_name, params: params, duration: duration, token_usage: step_token_usage)
 
       context.save_step(step_name, output_path)
     end

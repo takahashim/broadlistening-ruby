@@ -38,13 +38,14 @@ module Broadlistening
 
         input = sampled.map(&:argument).join("\n")
 
-        response = llm_client.chat(
+        result = llm_client.chat(
           system: config.prompts[:initial_labelling],
           user: input,
           json_mode: true
         )
+        context.add_token_usage(result.token_usage)
 
-        parse_label_response(response, level, cluster_id)
+        parse_label_response(result.content, level, cluster_id)
       rescue StandardError => e
         warn "Failed to label cluster #{level}_#{cluster_id}: #{e.message}"
         default_label(level, cluster_id)
@@ -60,8 +61,8 @@ module Broadlistening
         cluster_args.sample(sample_size)
       end
 
-      def parse_label_response(response, level, cluster_id)
-        parsed = JSON.parse(response)
+      def parse_label_response(content, level, cluster_id)
+        parsed = JSON.parse(content)
         ClusterLabel.new(
           cluster_id: "#{level}_#{cluster_id}",
           level: level,

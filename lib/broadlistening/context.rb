@@ -21,7 +21,7 @@ module Broadlistening
     attr_accessor :comments, :arguments, :relations,
                   :cluster_results, :umap_coords,
                   :initial_labels, :labels, :overview, :result,
-                  :output_dir
+                  :output_dir, :token_usage
 
     # Output file mapping for each step
     OUTPUT_FILES = {
@@ -64,6 +64,11 @@ module Broadlistening
       @overview = nil
       @result = nil
       @output_dir = nil
+      @token_usage = TokenUsage.new
+    end
+
+    def add_token_usage(usage)
+      @token_usage.add(usage) if usage
     end
 
     # Save a step's output to file

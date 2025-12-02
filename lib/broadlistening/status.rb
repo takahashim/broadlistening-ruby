@@ -31,7 +31,10 @@ module Broadlistening
         status: "running",
         plan: plan.map { |p| serialize_plan_entry(p) },
         start_time: Time.now.iso8601,
-        lock_until: lock_time.iso8601
+        lock_until: lock_time.iso8601,
+        total_token_usage: 0,
+        token_usage_input: 0,
+        token_usage_output: 0
       )
       @completed_jobs = []
       save
@@ -44,14 +47,20 @@ module Broadlistening
       save
     end
 
-    def complete_step(step_name, params:, duration:, token_usage: 0)
+    def complete_step(step_name, params:, duration:, token_usage: nil)
+      usage = token_usage || TokenUsage.new
       job = CompletedJob.create(
         step: step_name,
         duration: duration,
         params: params,
-        token_usage: token_usage
+        token_usage: usage.total
       )
       @completed_jobs << job
+
+      @data[:total_token_usage] = (@data[:total_token_usage] || 0) + usage.total
+      @data[:token_usage_input] = (@data[:token_usage_input] || 0) + usage.input
+      @data[:token_usage_output] = (@data[:token_usage_output] || 0) + usage.output
+
       @data.delete(:current_job)
       @data.delete(:current_job_started)
       save

@@ -48,9 +48,10 @@ RSpec.describe Broadlistening::LlmClient do
           )
       end
 
-      it "returns the message content" do
+      it "returns a ChatResult with the message content" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("I'm doing well, thank you!")
+        expect(result.content).to eq("I'm doing well, thank you!")
+        expect(result.token_usage).to be_a(Broadlistening::TokenUsage)
       end
     end
 
@@ -79,7 +80,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "includes response_format in the request" do
         result = client.chat(system: system_prompt, user: user_message, json_mode: true)
-        expect(result).to eq('{"result": "success"}')
+        expect(result.content).to eq('{"result": "success"}')
       end
     end
 
@@ -131,7 +132,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "returns the result after successful retry" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("Success after retry")
+        expect(result.content).to eq("Success after retry")
       end
     end
   end
@@ -285,7 +286,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "recovers after rate limit retries" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("Success after rate limit")
+        expect(result.content).to eq("Success after rate limit")
       end
     end
   end
@@ -315,7 +316,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "sends requests to Azure endpoint" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("Azure response")
+        expect(result.content).to eq("Azure response")
       end
     end
 
@@ -339,7 +340,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "sends requests to Gemini endpoint" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("Gemini response")
+        expect(result.content).to eq("Gemini response")
       end
     end
 
@@ -363,7 +364,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "sends requests to OpenRouter endpoint" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("OpenRouter response")
+        expect(result.content).to eq("OpenRouter response")
       end
     end
 
@@ -387,7 +388,7 @@ RSpec.describe Broadlistening::LlmClient do
 
       it "sends requests to local LLM endpoint" do
         result = client.chat(system: system_prompt, user: user_message)
-        expect(result).to eq("Local LLM response")
+        expect(result.content).to eq("Local LLM response")
       end
     end
   end

@@ -133,7 +133,11 @@ RSpec.describe "Step Notifications" do
 
       mock_client = instance_double(Broadlistening::LlmClient)
       allow(step).to receive(:llm_client).and_return(mock_client)
-      allow(mock_client).to receive(:chat).and_return('{"label": "Test", "description": "Test desc"}')
+      chat_result = Broadlistening::LlmClient::ChatResult.new(
+        content: '{"label": "Test", "description": "Test desc"}',
+        token_usage: Broadlistening::TokenUsage.new
+      )
+      allow(mock_client).to receive(:chat).and_return(chat_result)
 
       step.execute
 
@@ -184,7 +188,11 @@ RSpec.describe "Step Notifications" do
 
       mock_client = instance_double(Broadlistening::LlmClient)
       allow(step).to receive(:llm_client).and_return(mock_client)
-      allow(mock_client).to receive(:chat).and_return('{"label": "Merged", "description": "Merged desc"}')
+      chat_result = Broadlistening::LlmClient::ChatResult.new(
+        content: '{"label": "Merged", "description": "Merged desc"}',
+        token_usage: Broadlistening::TokenUsage.new
+      )
+      allow(mock_client).to receive(:chat).and_return(chat_result)
 
       step.execute
 

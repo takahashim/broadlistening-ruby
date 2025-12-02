@@ -30,19 +30,20 @@ module Broadlistening
       def extract_arguments_from_comment(comment)
         return [] if comment.empty?
 
-        response = llm_client.chat(
+        result = llm_client.chat(
           system: config.prompts[:extraction],
           user: comment.body,
           json_mode: true
         )
-        parse_extraction_response(response)
+        context.add_token_usage(result.token_usage)
+        parse_extraction_response(result.content)
       rescue StandardError => e
         warn "Failed to extract from comment #{comment.id}: #{e.message}"
         []
       end
 
-      def parse_extraction_response(response)
-        parsed = JSON.parse(response)
+      def parse_extraction_response(content)
+        parsed = JSON.parse(content)
 
         # Handle dict response (structured output)
         if parsed.is_a?(Hash)
@@ -62,16 +63,13 @@ module Broadlistening
 
         []
       rescue JSON::ParserError
-        parse_fallback_response(response)
+        parse_fallback_response(content)
       end
 
-      # Fallback parser matching Python's parse_response behavior
-      # Handles: code blocks, trailing commas, embedded JSON arrays
-      def parse_fallback_response(response)
-        return [] if response.nil? || response.strip.empty?
+      def parse_fallback_response(content)
+        return [] if content.nil? || content.strip.empty?
 
-        # Remove markdown code blocks
-        cleaned = response.gsub(/```json\s*/i, "").gsub(/```\s*/, "")
+        cleaned = content.gsub(/```json\s*/i, "").gsub(/```\s*/, "")
 
         # Try to extract JSON array using balanced bracket matching
         json_str = extract_balanced_json_array(cleaned)
@@ -89,8 +87,7 @@ module Broadlistening
           end
         end
 
-        # Final fallback: split by newlines
-        response.split("\n").map(&:strip).reject(&:empty?)
+        content.split("\n").map(&:strip).reject(&:empty?)
       end
 
       # Extract a balanced JSON array from text (handles nested arrays)

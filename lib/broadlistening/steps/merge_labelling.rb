@@ -44,13 +44,14 @@ module Broadlistening
 
         input = child_labels.map { |l| "- #{l.label}: #{l.description}" }.join("\n")
 
-        response = llm_client.chat(
+        result = llm_client.chat(
           system: config.prompts[:merge_labelling],
           user: input,
           json_mode: true
         )
+        context.add_token_usage(result.token_usage)
 
-        parse_label_response(response, level, parent_cluster_id)
+        parse_label_response(result.content, level, parent_cluster_id)
       rescue StandardError => e
         warn "Failed to merge labels for cluster #{level}_#{parent_cluster_id}: #{e.message}"
         default_label(level, parent_cluster_id)
@@ -68,8 +69,8 @@ module Broadlistening
         child_clusters.to_a
       end
 
-      def parse_label_response(response, level, cluster_id)
-        parsed = JSON.parse(response)
+      def parse_label_response(content, level, cluster_id)
+        parsed = JSON.parse(content)
         ClusterLabel.new(
           cluster_id: "#{level}_#{cluster_id}",
           level: level,

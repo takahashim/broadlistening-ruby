@@ -10,6 +10,7 @@ require "umappp"
 require "retriable"
 
 require_relative "broadlistening/version"
+require_relative "broadlistening/token_usage"
 require_relative "broadlistening/cluster_label"
 require_relative "broadlistening/cluster_info"
 require_relative "broadlistening/completed_job"

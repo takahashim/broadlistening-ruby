@@ -23,10 +23,12 @@ module Broadlistening
       def generate_overview(top_labels)
         input = top_labels.map { |l| "- #{l[:label]}: #{l[:description]}" }.join("\n")
 
-        llm_client.chat(
+        result = llm_client.chat(
           system: config.prompts[:overview],
           user: input
         )
+        context.add_token_usage(result.token_usage)
+        result.content
       rescue StandardError => e
         warn "Failed to generate overview: #{e.message}"
         ""
