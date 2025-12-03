@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "csv", ">= 3.0"
   spec.add_dependency "numo-narray", "~> 0.9"
   spec.add_dependency "parallel", "~> 1.20"
-  spec.add_dependency "rice", "~> 4.6.0"
+  spec.add_dependency "rice", "~> 4.7"
   spec.add_dependency "ruby-openai", "~> 7.0"
   spec.add_dependency "umappp", "~> 0.2"
   spec.add_dependency "json_schemer", "~> 2.0"
