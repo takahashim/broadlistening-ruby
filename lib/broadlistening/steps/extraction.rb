@@ -6,13 +6,20 @@ module Broadlistening
       def execute
         return context if context.comments.empty?
 
-        results = extract_opinions_in_parallel(context.comments)
-        build_arguments_and_relations(context.comments, results)
+        comments = apply_limit(context.comments)
+        results = extract_opinions_in_parallel(comments)
+        build_arguments_and_relations(comments, results)
 
         context
       end
 
       private
+
+      def apply_limit(comments)
+        return comments if config.limit.nil? || config.limit <= 0
+
+        comments.first(config.limit)
+      end
 
       def extract_opinions_in_parallel(comments)
         total = comments.size

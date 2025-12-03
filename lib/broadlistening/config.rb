@@ -7,10 +7,11 @@ module Broadlistening
     attr_reader :model, :embedding_model, :provider, :cluster_nums, :workers, :prompts, :api_key,
                 :enable_source_link, :hidden_properties, :is_pubcom,
                 :api_base_url, :local_llm_address, :azure_api_version,
-                :input, :question, :name, :intro
+                :input, :question, :name, :intro, :limit
 
     DEFAULT_CLUSTER_NUMS = [ 5, 15 ].freeze
     DEFAULT_WORKERS = 10
+    DEFAULT_LIMIT = 1000
     DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
 
     def self.from_json(json_string)
@@ -23,6 +24,7 @@ module Broadlistening
 
       cluster_nums = hash[:cluster_nums] || hash.dig(:hierarchical_clustering, :cluster_nums)
       workers = hash[:workers] || hash.dig(:extraction, :workers)
+      limit = hash[:limit] || hash.dig(:extraction, :limit)
       hidden_properties = hash[:hidden_properties] || hash.dig(:aggregation, :hidden_properties)
 
       new(
@@ -32,6 +34,7 @@ module Broadlistening
         provider: hash[:provider],
         cluster_nums: cluster_nums,
         workers: workers,
+        limit: limit,
         prompts: prompts,
         enable_source_link: hash[:enable_source_link],
         hidden_properties: hidden_properties,
@@ -61,6 +64,7 @@ module Broadlistening
       @embedding_model = options[:embedding_model] || @provider_obj.default_embedding_model
       @cluster_nums = options[:cluster_nums] || DEFAULT_CLUSTER_NUMS.dup
       @workers = options[:workers] || DEFAULT_WORKERS
+      @limit = options[:limit] || DEFAULT_LIMIT
       @prompts = default_prompts.merge(options[:prompts] || {})
       @api_key = options[:api_key] || @provider_obj.api_key
       @enable_source_link = options.fetch(:enable_source_link, false)
@@ -83,6 +87,7 @@ module Broadlistening
         provider: provider,
         cluster_nums: cluster_nums,
         workers: workers,
+        limit: limit,
         enable_source_link: enable_source_link,
         hidden_properties: hidden_properties,
         is_pubcom: is_pubcom,

@@ -103,4 +103,68 @@ RSpec.describe Broadlistening::Steps::Extraction do
       expect(arg_without_props.properties).to be_nil
     end
   end
+
+  describe "limit" do
+    let(:comments) do
+      (1..10).map do |i|
+        Broadlistening::Comment.new(id: i.to_s, body: "コメント#{i}", proposal_id: "123")
+      end
+    end
+
+    let(:context) do
+      ctx = Broadlistening::Context.new
+      ctx.comments = comments
+      ctx
+    end
+
+    context "when limit is set" do
+      let(:config) { Broadlistening::Config.new(config_options.merge(limit: 3)) }
+
+      subject(:step) { described_class.new(config, context) }
+
+      before do
+        allow(step).to receive(:extract_arguments_from_comment).and_return([ "意見" ])
+      end
+
+      it "processes only the first N comments" do
+        step.execute
+        expect(context.arguments.size).to eq(3)
+        expect(context.arguments.map(&:comment_id)).to eq(%w[1 2 3])
+      end
+    end
+
+    context "when limit is larger than comment count" do
+      let(:config) { Broadlistening::Config.new(config_options.merge(limit: 100)) }
+
+      subject(:step) { described_class.new(config, context) }
+
+      before do
+        allow(step).to receive(:extract_arguments_from_comment).and_return([ "意見" ])
+      end
+
+      it "processes all comments" do
+        step.execute
+        expect(context.arguments.size).to eq(10)
+      end
+    end
+
+    context "when limit is default (1000)" do
+      let(:config) { Broadlistening::Config.new(config_options) }
+
+      subject(:step) { described_class.new(config, context) }
+
+      before do
+        allow(step).to receive(:extract_arguments_from_comment).and_return([ "意見" ])
+      end
+
+      it "uses default limit" do
+        expect(config.limit).to eq(1000)
+      end
+
+      it "processes all comments when under limit" do
+        step.execute
+        expect(context.arguments.size).to eq(10)
+      end
+    end
+  end
 end

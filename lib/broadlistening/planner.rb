@@ -30,7 +30,7 @@ module Broadlistening
     def extract_current_params(step_name)
       case step_name.to_sym
       when :extraction
-        { model: config.model, prompt: config.prompts[:extraction] }
+        { model: config.model, prompt: config.prompts[:extraction], limit: config.limit }
       when :embedding
         { model: config.embedding_model }
       when :clustering
