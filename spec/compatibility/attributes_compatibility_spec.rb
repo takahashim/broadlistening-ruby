@@ -145,7 +145,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
     end
 
     let(:cluster_results) do
-      { 1 => [ 0, 0, 1 ], 2 => [ 0, 1, 2 ] }
+      Broadlistening::ClusterResults.from_h({ 1 => [ 0, 0, 1 ], 2 => [ 0, 1, 2 ] })
     end
 
     let(:context) do
@@ -245,7 +245,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
       ctx.comments = comments
       ctx.arguments = arguments
       ctx.labels = labels
-      ctx.cluster_results = { 1 => [ 0, 0, 1 ] }
+      ctx.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0, 0, 1 ] })
       ctx.overview = "Test overview"
       ctx
     end
@@ -308,7 +308,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
         ]
         ctx.arguments = arguments
         ctx.labels = { "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Group", description: "Desc") }
-        ctx.cluster_results = { 1 => [ 0, 0 ] }
+        ctx.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0, 0 ] })
         ctx.overview = "Overview"
         ctx
       end
@@ -350,7 +350,7 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
         ctx.comments = [ Broadlistening::Comment.new(id: "1", body: "Comment 1", proposal_id: "test") ]
         ctx.arguments = arguments
         ctx.labels = { "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Group", description: "Desc") }
-        ctx.cluster_results = { 1 => [ 0 ] }
+        ctx.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0 ] })
         ctx.overview = "Overview"
         ctx
       end

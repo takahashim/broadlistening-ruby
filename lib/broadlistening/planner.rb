@@ -21,7 +21,7 @@ module Broadlistening
       spec_loader.specs.each do |spec|
         step_name = spec[:step]
         run, reason = decide_step(spec, plan, force: force, only: only)
-        plan << { step: step_name, run: run, reason: reason }
+        plan << PlanStep.new(step: step_name, run: run, reason: reason)
       end
 
       plan
@@ -75,9 +75,9 @@ module Broadlistening
 
       # 依存ステップの確認
       deps = spec[:dependencies][:steps]
-      changing_deps = plan.select { |p| deps.include?(p[:step]) && p[:run] }
+      changing_deps = plan.select { |p| deps.include?(p.step) && p.run? }
       if changing_deps.any?
-        dep_names = changing_deps.map { |d| d[:step] }.join(", ")
+        dep_names = changing_deps.map(&:step).join(", ")
         return [ true, "dependent steps will re-run: #{dep_names}" ]
       end
 

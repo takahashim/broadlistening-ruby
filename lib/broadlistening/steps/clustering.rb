@@ -67,7 +67,7 @@ module Broadlistening
       end
 
       def build_hierarchical_results(kmeans, cluster_nums)
-        results = {}
+        results = ClusterResults.new
 
         cluster_nums[0..-2].each_with_index do |n_target, level|
           merged_labels = HierarchicalClustering.merge(
@@ -75,11 +75,16 @@ module Broadlistening
             kmeans.labels,
             n_target
           )
-          results[level + 1] = merged_labels
+          merged_labels.each_with_index do |cluster_num, idx|
+            results.set(level + 1, idx, cluster_num)
+          end
         end
 
         # Final level uses KMeans labels directly
-        results[cluster_nums.size] = kmeans.labels
+        final_level = cluster_nums.size
+        kmeans.labels.each_with_index do |cluster_num, idx|
+          results.set(final_level, idx, cluster_num)
+        end
 
         results
       end
@@ -95,8 +100,8 @@ module Broadlistening
       def build_cluster_ids(idx, cluster_results)
         cluster_ids = [ "0" ] # Root cluster
 
-        cluster_results.keys.sort.each do |level|
-          cluster_id = "#{level}_#{cluster_results[level][idx]}"
+        cluster_results.levels.each do |level|
+          cluster_id = "#{level}_#{cluster_results.cluster_at(level, idx)}"
           cluster_ids << cluster_id
         end
 

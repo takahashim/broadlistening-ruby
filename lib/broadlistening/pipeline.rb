@@ -71,10 +71,10 @@ module Broadlistening
     def execute_pipeline(plan, status, planner, context, output_path)
       instrument("pipeline.broadlistening", comment_count: context.comments.size) do
         plan.each_with_index do |step_plan, index|
-          if step_plan[:run]
-            execute_step(step_plan[:step], index, status, planner, context, output_path)
+          if step_plan.run?
+            execute_step(step_plan.step, index, status, planner, context, output_path)
           else
-            notify_skip(step_plan[:step], step_plan[:reason])
+            notify_skip(step_plan.step, step_plan.reason)
           end
         end
       end

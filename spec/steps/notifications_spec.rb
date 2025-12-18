@@ -110,10 +110,10 @@ RSpec.describe "Step Notifications" do
     end
 
     let(:cluster_results) do
-      {
+      Broadlistening::ClusterResults.from_h({
         1 => [ 0, 0, 1 ],
         2 => [ 0, 1, 2 ]
-      }
+      })
     end
 
     let(:context) do
@@ -156,10 +156,10 @@ RSpec.describe "Step Notifications" do
     end
 
     let(:cluster_results) do
-      {
+      Broadlistening::ClusterResults.from_h({
         1 => [ 0, 0, 1 ],
         2 => [ 0, 1, 2 ]
-      }
+      })
     end
 
     let(:initial_labels) do

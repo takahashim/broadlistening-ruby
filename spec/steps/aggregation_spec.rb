@@ -41,10 +41,10 @@ RSpec.describe Broadlistening::Steps::Aggregation do
   end
 
   let(:cluster_results) do
-    {
+    Broadlistening::ClusterResults.from_h({
       1 => [ 0, 0, 1 ],
       2 => [ 0, 1, 2 ]
-    }
+    })
   end
 
   let(:context) do

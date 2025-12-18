@@ -16,12 +16,12 @@ module Broadlistening
       private
 
       def find_top_level_labels(labels)
-        min_level = labels.values.map { |l| l[:level] }.min
-        labels.values.select { |l| l[:level] == min_level }
+        min_level = labels.values.map(&:level).min
+        labels.values.select { |l| l.level == min_level }
       end
 
       def generate_overview(top_labels)
-        input = top_labels.map { |l| "- #{l[:label]}: #{l[:description]}" }.join("\n")
+        input = top_labels.map { |l| "- #{l.label}: #{l.description}" }.join("\n")
 
         result = llm_client.chat(
           system: config.prompts[:overview],

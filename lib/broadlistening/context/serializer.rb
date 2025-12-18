@@ -58,7 +58,7 @@ module Broadlistening
         CSV.open(@dir / file_config[:relations], "w") do |csv|
           csv << [ "arg-id", "comment-id" ]
           @context.relations.each do |rel|
-            csv << [ rel[:arg_id], rel[:comment_id] ]
+            csv << [ rel.arg_id, rel.comment_id ]
           end
         end
       end

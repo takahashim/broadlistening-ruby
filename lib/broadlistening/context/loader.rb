@@ -64,7 +64,7 @@ module Broadlistening
         relations_map = {}
         CSV.foreach(relations_file, headers: true) do |row|
           relations_map[row["arg-id"]] = row["comment-id"]
-          @context.relations << { arg_id: row["arg-id"], comment_id: row["comment-id"] }
+          @context.relations << Relation.new(arg_id: row["arg-id"], comment_id: row["comment-id"])
         end
 
         @context.arguments.each do |arg|
@@ -166,16 +166,15 @@ module Broadlistening
       end
 
       def rebuild_cluster_results
-        @context.cluster_results = {}
+        @context.cluster_results = ClusterResults.new
         @context.arguments.each_with_index do |arg, idx|
           next unless arg.cluster_ids
 
           arg.cluster_ids.each_with_index do |cluster_id, level|
             next if level == 0
 
-            @context.cluster_results[level] ||= []
             cluster_num = cluster_id.split("_").last.to_i
-            @context.cluster_results[level][idx] = cluster_num
+            @context.cluster_results.set(level, idx, cluster_num)
           end
         end
       end

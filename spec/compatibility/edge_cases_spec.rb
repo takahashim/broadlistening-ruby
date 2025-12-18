@@ -346,7 +346,7 @@ RSpec.describe "Edge Cases Compatibility" do
       ]
       ctx.arguments = arguments
       ctx.labels = labels
-      ctx.cluster_results = { 1 => [ 0, 0 ] }
+      ctx.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0, 0 ] })
       ctx.overview = "Overview with\ttabs and\nnewlines"
       ctx
     end

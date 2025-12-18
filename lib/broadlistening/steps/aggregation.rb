@@ -89,7 +89,7 @@ module Broadlistening
         arg_idx = context.arguments.index { |arg| arg.in_cluster?(label.cluster_id) }
         return "0" unless arg_idx
 
-        parent_cluster_num = context.cluster_results[parent_level][arg_idx]
+        parent_cluster_num = context.cluster_results.cluster_at(parent_level, arg_idx)
         "#{parent_level}_#{parent_cluster_num}"
       end
 

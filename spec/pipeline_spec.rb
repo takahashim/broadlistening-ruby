@@ -86,20 +86,20 @@ RSpec.describe Broadlistening::Pipeline do
       step.context.arguments = [
         Broadlistening::Argument.new(arg_id: "A1_0", argument: "test", comment_id: "1")
       ]
-      step.context.relations = [{ arg_id: "A1_0", comment_id: "1" }]
+      step.context.relations = [ Broadlistening::Relation.new(arg_id: "A1_0", comment_id: "1") ]
       step.context
     end
     allow_any_instance_of(Broadlistening::Steps::Embedding).to receive(:execute) do |step|
-      step.context.arguments.each { |a| a.embedding = [0.1, 0.2] }
+      step.context.arguments.each { |a| a.embedding = [ 0.1, 0.2 ] }
       step.context
     end
     allow_any_instance_of(Broadlistening::Steps::Clustering).to receive(:execute) do |step|
       step.context.arguments.each do |a|
         a.x = 0.5
         a.y = 0.5
-        a.cluster_ids = ["0", "1_0"]
+        a.cluster_ids = [ "0", "1_0" ]
       end
-      step.context.cluster_results = { 1 => [0] }
+      step.context.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0 ] })
       step.context
     end
     allow_any_instance_of(Broadlistening::Steps::InitialLabelling).to receive(:execute) do |step|
@@ -134,7 +134,7 @@ RSpec.describe Broadlistening::Pipeline do
             url: nil
           )
         end,
-        clusters: [Broadlistening::PipelineResult::Cluster.root(step.context.arguments.size)],
+        clusters: [ Broadlistening::PipelineResult::Cluster.root(step.context.arguments.size) ],
         comments: {},
         property_map: {},
         translations: {},

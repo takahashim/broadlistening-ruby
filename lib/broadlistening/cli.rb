@@ -123,8 +123,8 @@ module Broadlistening
       plan = planner.create_plan(force: @options[:force], only: @options[:only])
 
       plan.each do |step|
-        status = step[:run] ? "RUN" : "SKIP"
-        puts "  #{step[:step]}: #{status} (#{step[:reason]})"
+        status = step.run? ? "RUN" : "SKIP"
+        puts "  #{step.step}: #{status} (#{step.reason})"
       end
 
       puts ""

@@ -8,8 +8,8 @@ module Broadlistening
       def execute
         return context if context.arguments.empty? || context.cluster_results.empty?
 
-        max_level = context.cluster_results.keys.max
-        cluster_ids = context.cluster_results[max_level].uniq
+        max_level = context.cluster_results.max_level
+        cluster_ids = context.cluster_results.unique_clusters(max_level)
 
         labels = label_clusters_in_parallel(context.arguments, max_level, cluster_ids)
 

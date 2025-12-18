@@ -44,7 +44,7 @@ module Broadlistening
       @comments = []
       @arguments = []
       @relations = []
-      @cluster_results = {}
+      @cluster_results = ClusterResults.new
       @umap_coords = nil
       @initial_labels = {}
       @labels = {}
@@ -73,14 +73,20 @@ module Broadlistening
       {
         comments: @comments.map(&:to_h),
         arguments: @arguments.map(&:to_h),
-        relations: @relations,
-        cluster_results: @cluster_results,
+        relations: @relations.map(&:to_h),
+        cluster_results: @cluster_results.to_h,
         umap_coords: @umap_coords,
-        initial_labels: @initial_labels,
-        labels: @labels,
+        initial_labels: serialize_labels(@initial_labels),
+        labels: serialize_labels(@labels),
         overview: @overview,
         result: @result
       }
+    end
+
+    private
+
+    def serialize_labels(labels_hash)
+      labels_hash.transform_values(&:to_h)
     end
   end
 end

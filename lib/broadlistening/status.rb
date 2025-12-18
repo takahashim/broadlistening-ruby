@@ -29,7 +29,7 @@ module Broadlistening
     def start_pipeline(plan)
       @data.merge!(
         status: "running",
-        plan: plan.map { |p| serialize_plan_entry(p) },
+        plan: plan.map(&:to_h),
         start_time: Time.now.iso8601,
         lock_until: lock_time.iso8601,
         total_token_usage: 0,
@@ -113,14 +113,6 @@ module Broadlistening
 
     def lock_time
       Time.now + LOCK_DURATION
-    end
-
-    def serialize_plan_entry(entry)
-      {
-        step: entry[:step].to_s,
-        run: entry[:run],
-        reason: entry[:reason]
-      }
     end
 
     def merge_previous_jobs

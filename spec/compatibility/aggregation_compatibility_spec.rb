@@ -82,13 +82,14 @@ RSpec.describe "Aggregation Compatibility" do
     let(:cluster_results) do
       cluster_columns = python_clusters_csv.headers.select { |h| h.start_with?("cluster-level-") }
 
-      cluster_columns.each_with_index.each_with_object({}) do |(col, idx), results|
+      hash = cluster_columns.each_with_index.each_with_object({}) do |(col, idx), results|
         level = idx + 1
         results[level] = python_clusters_csv.map do |row|
           # Extract the numeric part after the underscore
           row[col].split("_").last.to_i
         end
       end
+      Broadlistening::ClusterResults.from_h(hash)
     end
 
     let(:context) do

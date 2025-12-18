@@ -9,7 +9,7 @@ module Broadlistening
         all_labels = context.initial_labels.dup
 
         # Build parent-child relationships and merge from bottom to top
-        levels = context.cluster_results.keys.sort.reverse
+        levels = context.cluster_results.levels.reverse
         levels[1..].each do |level|
           parent_labels = merge_labels_for_level(context.arguments, all_labels, context.cluster_results, level)
           parent_labels.each { |l| all_labels[l.cluster_id] = l }
@@ -23,7 +23,7 @@ module Broadlistening
 
       def merge_labels_for_level(arguments, all_labels, cluster_results, level)
         child_level = level + 1
-        parent_clusters = cluster_results[level].uniq
+        parent_clusters = cluster_results.unique_clusters(level)
         total = parent_clusters.size
         mutex = Mutex.new
         processed = 0
@@ -61,9 +61,9 @@ module Broadlistening
         child_clusters = Set.new
 
         arguments.each_with_index do |_arg, idx|
-          next unless cluster_results[parent_level][idx] == parent_cluster_id
+          next unless cluster_results.cluster_at(parent_level, idx) == parent_cluster_id
 
-          child_clusters.add(cluster_results[child_level][idx])
+          child_clusters.add(cluster_results.cluster_at(child_level, idx))
         end
 
         child_clusters.to_a

@@ -59,8 +59,8 @@ RSpec.describe Broadlistening::Status do
   describe '#start_pipeline' do
     let(:plan) do
       [
-        { step: :extraction, run: true, reason: 'no trace of previous run' },
-        { step: :embedding, run: false, reason: 'nothing changed' }
+        Broadlistening::PlanStep.new(step: :extraction, run: true, reason: 'no trace of previous run'),
+        Broadlistening::PlanStep.new(step: :embedding, run: false, reason: 'nothing changed')
       ]
     end
 
@@ -164,7 +164,7 @@ RSpec.describe Broadlistening::Status do
 
   describe '#complete_pipeline' do
     before do
-      status.start_pipeline([ { step: :extraction, run: true, reason: 'test' } ])
+      status.start_pipeline([ Broadlistening::PlanStep.new(step: :extraction, run: true, reason: 'test') ])
       status.start_step(:extraction)
       status.complete_step(:extraction, params: {}, duration: 1.0)
     end

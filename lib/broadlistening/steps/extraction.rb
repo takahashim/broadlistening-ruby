@@ -144,11 +144,10 @@ module Broadlistening
             arg = Argument.from_comment(comment, opinion_text, opinion_idx)
             context.arguments << arg
 
-            context.relations << {
+            context.relations << Relation.new(
               arg_id: arg.arg_id,
-              comment_id: arg.comment_id,
-              proposal_id: comment.proposal_id
-            }
+              comment_id: arg.comment_id
+            )
           end
         end
       end

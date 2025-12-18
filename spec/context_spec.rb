@@ -19,7 +19,7 @@ RSpec.describe Broadlistening::Context do
       expect(context.comments).to eq([])
       expect(context.arguments).to eq([])
       expect(context.relations).to eq([])
-      expect(context.cluster_results).to eq({})
+      expect(context.cluster_results).to be_empty
       expect(context.initial_labels).to eq({})
       expect(context.labels).to eq({})
       expect(context.overview).to be_nil
@@ -42,13 +42,13 @@ RSpec.describe Broadlistening::Context do
         FileUtils.mkdir_p(output_dir)
         # args.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
-          csv << ['arg-id', 'argument']
-          csv << ['A1_0', 'test argument']
+          csv << [ 'arg-id', 'argument' ]
+          csv << [ 'A1_0', 'test argument' ]
         end
         # relations.csv
         CSV.open(File.join(output_dir, 'relations.csv'), 'w') do |csv|
-          csv << ['arg-id', 'comment-id']
-          csv << ['A1_0', '1']
+          csv << [ 'arg-id', 'comment-id' ]
+          csv << [ 'A1_0', '1' ]
         end
       end
 
@@ -69,19 +69,19 @@ RSpec.describe Broadlistening::Context do
         FileUtils.mkdir_p(output_dir)
         # First create args.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
-          csv << ['arg-id', 'argument']
-          csv << ['A1_0', 'test']
+          csv << [ 'arg-id', 'argument' ]
+          csv << [ 'A1_0', 'test' ]
         end
         # embeddings.json (kept as JSON)
         File.write(File.join(output_dir, 'embeddings.json'), {
-          arguments: [{ arg_id: 'A1_0', embedding: [0.1, 0.2, 0.3] }]
+          arguments: [ { arg_id: 'A1_0', embedding: [ 0.1, 0.2, 0.3 ] } ]
         }.to_json)
       end
 
       it 'merges embedding data into arguments' do
         context = described_class.load_from_dir(output_dir)
 
-        expect(context.arguments.first.embedding).to eq([0.1, 0.2, 0.3])
+        expect(context.arguments.first.embedding).to eq([ 0.1, 0.2, 0.3 ])
       end
     end
 
@@ -90,13 +90,13 @@ RSpec.describe Broadlistening::Context do
         FileUtils.mkdir_p(output_dir)
         # First create args.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
-          csv << ['arg-id', 'argument']
-          csv << ['A1_0', 'test']
+          csv << [ 'arg-id', 'argument' ]
+          csv << [ 'A1_0', 'test' ]
         end
         # hierarchical_clusters.csv
         CSV.open(File.join(output_dir, 'hierarchical_clusters.csv'), 'w') do |csv|
-          csv << ['arg-id', 'argument', 'x', 'y', 'cluster-level-1-id', 'cluster-level-2-id']
-          csv << ['A1_0', 'test', '0.5', '0.6', '1_0', '2_0']
+          csv << [ 'arg-id', 'argument', 'x', 'y', 'cluster-level-1-id', 'cluster-level-2-id' ]
+          csv << [ 'A1_0', 'test', '0.5', '0.6', '1_0', '2_0' ]
         end
       end
 
@@ -114,21 +114,21 @@ RSpec.describe Broadlistening::Context do
         FileUtils.mkdir_p(output_dir)
         # First create args.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
-          csv << ['arg-id', 'argument']
-          csv << ['A1_0', 'test']
+          csv << [ 'arg-id', 'argument' ]
+          csv << [ 'A1_0', 'test' ]
         end
         # hierarchical_initial_labels.csv
         CSV.open(File.join(output_dir, 'hierarchical_initial_labels.csv'), 'w') do |csv|
-          csv << ['arg-id', 'argument', 'x', 'y', 'cluster-level-1-id', 'cluster-level-1-label',
-                  'cluster-level-1-description', 'cluster-level-2-id', 'cluster-level-2-label', 'cluster-level-2-description']
-          csv << ['A1_0', 'test', '0.5', '0.6', '1_0', 'Parent', 'Parent desc', '2_0', 'Test', 'Desc']
+          csv << [ 'arg-id', 'argument', 'x', 'y', 'cluster-level-1-id', 'cluster-level-1-label',
+                  'cluster-level-1-description', 'cluster-level-2-id', 'cluster-level-2-label', 'cluster-level-2-description' ]
+          csv << [ 'A1_0', 'test', '0.5', '0.6', '1_0', 'Parent', 'Parent desc', '2_0', 'Test', 'Desc' ]
         end
         # hierarchical_merge_labels.csv
         CSV.open(File.join(output_dir, 'hierarchical_merge_labels.csv'), 'w') do |csv|
-          csv << ['level', 'id', 'label', 'description', 'value', 'parent', 'density', 'density_rank',
-                  'density_rank_percentile']
-          csv << ['1', '1_0', 'Parent', 'Parent desc', '1', '0', '', '', '']
-          csv << ['2', '2_0', 'Test', 'Desc', '1', '1_0', '', '', '']
+          csv << [ 'level', 'id', 'label', 'description', 'value', 'parent', 'density', 'density_rank',
+                  'density_rank_percentile' ]
+          csv << [ '1', '1_0', 'Parent', 'Parent desc', '1', '0', '', '', '' ]
+          csv << [ '2', '2_0', 'Test', 'Desc', '1', '1_0', '', '', '' ]
         end
       end
 
@@ -159,17 +159,17 @@ RSpec.describe Broadlistening::Context do
   describe '#save_step' do
     let(:context) do
       ctx = described_class.new
-      ctx.comments = [Broadlistening::Comment.new(id: '1', body: 'Test')]
-      ctx.arguments = [Broadlistening::Argument.new(
+      ctx.comments = [ Broadlistening::Comment.new(id: '1', body: 'Test') ]
+      ctx.arguments = [ Broadlistening::Argument.new(
         arg_id: 'A1_0',
         argument: 'test',
         comment_id: '1',
-        embedding: [0.1, 0.2],
+        embedding: [ 0.1, 0.2 ],
         x: 0.5,
         y: 0.6,
         cluster_ids: %w[0 1_0]
-      )]
-      ctx.relations = [{ arg_id: 'A1_0', comment_id: '1' }]
+      ) ]
+      ctx.relations = [ Broadlistening::Relation.new(arg_id: 'A1_0', comment_id: '1') ]
       ctx
     end
 
@@ -201,7 +201,7 @@ RSpec.describe Broadlistening::Context do
     end
 
     it 'saves clustering output as CSV' do
-      context.cluster_results = { 1 => [0] }
+      context.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0 ] })
       context.save_step(:clustering, output_dir)
 
       file_path = File.join(output_dir, 'hierarchical_clusters.csv')
@@ -236,8 +236,8 @@ RSpec.describe Broadlistening::Context do
   describe '#to_h' do
     it 'converts context to hash' do
       context = described_class.new
-      context.comments = [Broadlistening::Comment.new(id: '1', body: 'Test')]
-      context.arguments = [Broadlistening::Argument.new(arg_id: 'A1_0', argument: 'test', comment_id: '1')]
+      context.comments = [ Broadlistening::Comment.new(id: '1', body: 'Test') ]
+      context.arguments = [ Broadlistening::Argument.new(arg_id: 'A1_0', argument: 'test', comment_id: '1') ]
       context.overview = 'Test overview'
 
       hash = context.to_h

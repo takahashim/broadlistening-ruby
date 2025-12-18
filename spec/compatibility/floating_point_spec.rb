@@ -91,7 +91,7 @@ RSpec.describe "Floating Point Precision Compatibility" do
         ]
         ctx.arguments = arguments
         ctx.labels = { "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "L", description: "D") }
-        ctx.cluster_results = { 1 => [ 0, 0, 0 ] }
+        ctx.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0, 0, 0 ] })
         ctx.overview = "Overview"
         ctx
       end
@@ -262,7 +262,7 @@ RSpec.describe "Floating Point Precision Compatibility" do
         "2_0" => Broadlistening::ClusterLabel.new(cluster_id: "2_0", level: 2, label: "L2a", description: "D2a"),
         "2_1" => Broadlistening::ClusterLabel.new(cluster_id: "2_1", level: 2, label: "L2b", description: "D2b")
       }
-      ctx.cluster_results = { 1 => [ 0, 0 ], 2 => [ 0, 1 ] }
+      ctx.cluster_results = Broadlistening::ClusterResults.from_h({ 1 => [ 0, 0 ], 2 => [ 0, 1 ] })
       ctx.overview = "Overview"
       ctx
     end

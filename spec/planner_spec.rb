@@ -107,12 +107,12 @@ RSpec.describe Broadlistening::Planner do
     context 'when no previous run exists' do
       it 'plans to run all steps' do
         plan = planner.create_plan
-        expect(plan.all? { |p| p[:run] }).to be true
+        expect(plan.all?(&:run?)).to be true
       end
 
       it "gives reason 'no trace of previous run'" do
         plan = planner.create_plan
-        expect(plan.first[:reason]).to eq('no trace of previous run')
+        expect(plan.first.reason).to eq('no trace of previous run')
       end
     end
 
@@ -146,12 +146,12 @@ RSpec.describe Broadlistening::Planner do
 
       it 'plans to run all steps' do
         plan = planner_for_test.create_plan(force: true)
-        expect(plan.all? { |p| p[:run] }).to be true
+        expect(plan.all?(&:run?)).to be true
       end
 
       it "gives reason 'forced with -f'" do
         plan = planner_for_test.create_plan(force: true)
-        expect(plan.first[:reason]).to eq('forced with -f')
+        expect(plan.first.reason).to eq('forced with -f')
       end
     end
 
@@ -185,20 +185,20 @@ RSpec.describe Broadlistening::Planner do
 
       it 'plans to run only the specified step' do
         plan = planner_for_test.create_plan(only: :clustering)
-        running_steps = plan.select { |p| p[:run] }.map { |p| p[:step] }
+        running_steps = plan.select(&:run?).map(&:step)
         expect(running_steps).to eq([ :clustering ])
       end
 
       it "gives reason 'forced this step with -o'" do
         plan = planner_for_test.create_plan(only: :clustering)
-        clustering_plan = plan.find { |p| p[:step] == :clustering }
-        expect(clustering_plan[:reason]).to eq('forced this step with -o')
+        clustering_plan = plan.find { |p| p.step == :clustering }
+        expect(clustering_plan.reason).to eq('forced this step with -o')
       end
 
       it "gives reason 'forced another step with -o' for other steps" do
         plan = planner_for_test.create_plan(only: :clustering)
-        extraction_plan = plan.find { |p| p[:step] == :extraction }
-        expect(extraction_plan[:reason]).to eq('forced another step with -o')
+        extraction_plan = plan.find { |p| p.step == :extraction }
+        expect(extraction_plan.reason).to eq('forced another step with -o')
       end
     end
 
@@ -249,16 +249,16 @@ RSpec.describe Broadlistening::Planner do
 
       it 'plans to re-run step with missing output' do
         plan = planner_for_test.create_plan
-        extraction_plan = plan.find { |p| p[:step] == :extraction }
-        expect(extraction_plan[:run]).to be true
-        expect(extraction_plan[:reason]).to eq('previous output not found')
+        extraction_plan = plan.find { |p| p.step == :extraction }
+        expect(extraction_plan.run?).to be true
+        expect(extraction_plan.reason).to eq('previous output not found')
       end
 
       it 'plans to re-run dependent steps' do
         plan = planner_for_test.create_plan
-        embedding_plan = plan.find { |p| p[:step] == :embedding }
-        expect(embedding_plan[:run]).to be true
-        expect(embedding_plan[:reason]).to include('dependent steps will re-run')
+        embedding_plan = plan.find { |p| p.step == :embedding }
+        expect(embedding_plan.run?).to be true
+        expect(embedding_plan.reason).to include('dependent steps will re-run')
       end
     end
 
@@ -303,12 +303,12 @@ RSpec.describe Broadlistening::Planner do
 
       it 'plans to skip all steps' do
         plan = planner_for_test.create_plan
-        expect(plan.all? { |p| !p[:run] }).to be true
+        expect(plan.none?(&:run?)).to be true
       end
 
       it "gives reason 'nothing changed'" do
         plan = planner_for_test.create_plan
-        expect(plan.first[:reason]).to eq('nothing changed')
+        expect(plan.first.reason).to eq('nothing changed')
       end
     end
 
@@ -355,24 +355,24 @@ RSpec.describe Broadlistening::Planner do
 
       it 'plans to re-run step with changed parameter' do
         plan = planner_for_test.create_plan
-        clustering_plan = plan.find { |p| p[:step] == :clustering }
-        expect(clustering_plan[:run]).to be true
-        expect(clustering_plan[:reason]).to include('parameters changed')
+        clustering_plan = plan.find { |p| p.step == :clustering }
+        expect(clustering_plan.run?).to be true
+        expect(clustering_plan.reason).to include('parameters changed')
       end
 
       it 'plans to re-run dependent steps' do
         plan = planner_for_test.create_plan
-        initial_labelling_plan = plan.find { |p| p[:step] == :initial_labelling }
-        expect(initial_labelling_plan[:run]).to be true
-        expect(initial_labelling_plan[:reason]).to include('dependent steps will re-run')
+        initial_labelling_plan = plan.find { |p| p.step == :initial_labelling }
+        expect(initial_labelling_plan.run?).to be true
+        expect(initial_labelling_plan.reason).to include('dependent steps will re-run')
       end
 
       it 'does not re-run independent steps' do
         plan = planner_for_test.create_plan
-        extraction_plan = plan.find { |p| p[:step] == :extraction }
-        embedding_plan = plan.find { |p| p[:step] == :embedding }
-        expect(extraction_plan[:run]).to be false
-        expect(embedding_plan[:run]).to be false
+        extraction_plan = plan.find { |p| p.step == :extraction }
+        embedding_plan = plan.find { |p| p.step == :embedding }
+        expect(extraction_plan.run?).to be false
+        expect(embedding_plan.run?).to be false
       end
     end
   end
