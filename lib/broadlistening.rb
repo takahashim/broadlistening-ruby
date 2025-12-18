@@ -26,6 +26,8 @@ require_relative "broadlistening/argument"
 require_relative "broadlistening/csv_loader"
 require_relative "broadlistening/compatibility"
 require_relative "broadlistening/context"
+require_relative "broadlistening/context/loader"
+require_relative "broadlistening/context/serializer"
 require_relative "broadlistening/pipeline"
 require_relative "broadlistening/cli"
 

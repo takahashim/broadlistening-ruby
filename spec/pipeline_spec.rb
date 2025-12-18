@@ -82,27 +82,68 @@ RSpec.describe Broadlistening::Pipeline do
   end
 
   def mock_all_steps
-    allow_any_instance_of(Broadlistening::Steps::Extraction).to receive(:execute).and_return(
-      { comments: comments, arguments: [ { arg_id: "A1_0", argument: "test" } ], relations: [] }
-    )
-    allow_any_instance_of(Broadlistening::Steps::Embedding).to receive(:execute).and_return(
-      { comments: comments, arguments: [ { arg_id: "A1_0", argument: "test", embedding: [ 0.1, 0.2 ] } ], relations: [] }
-    )
-    allow_any_instance_of(Broadlistening::Steps::Clustering).to receive(:execute).and_return(
-      { comments: comments, arguments: [ { arg_id: "A1_0", argument: "test", embedding: [ 0.1, 0.2 ], x: 0.5, y: 0.5, cluster_ids: [ "0", "1_0" ] } ], relations: [], cluster_results: {} }
-    )
-    allow_any_instance_of(Broadlistening::Steps::InitialLabelling).to receive(:execute).and_return(
-      { initial_labels: { "1_0" => { label: "Test", description: "Desc" } } }
-    )
-    allow_any_instance_of(Broadlistening::Steps::MergeLabelling).to receive(:execute).and_return(
-      { labels: { "0" => { label: "All", description: "All opinions" } } }
-    )
-    allow_any_instance_of(Broadlistening::Steps::Overview).to receive(:execute).and_return(
-      { overview: "test overview" }
-    )
-    allow_any_instance_of(Broadlistening::Steps::Aggregation).to receive(:execute).and_return(
-      { result: { overview: "test" } }
-    )
+    allow_any_instance_of(Broadlistening::Steps::Extraction).to receive(:execute) do |step|
+      step.context.arguments = [
+        Broadlistening::Argument.new(arg_id: "A1_0", argument: "test", comment_id: "1")
+      ]
+      step.context.relations = [{ arg_id: "A1_0", comment_id: "1" }]
+      step.context
+    end
+    allow_any_instance_of(Broadlistening::Steps::Embedding).to receive(:execute) do |step|
+      step.context.arguments.each { |a| a.embedding = [0.1, 0.2] }
+      step.context
+    end
+    allow_any_instance_of(Broadlistening::Steps::Clustering).to receive(:execute) do |step|
+      step.context.arguments.each do |a|
+        a.x = 0.5
+        a.y = 0.5
+        a.cluster_ids = ["0", "1_0"]
+      end
+      step.context.cluster_results = { 1 => [0] }
+      step.context
+    end
+    allow_any_instance_of(Broadlistening::Steps::InitialLabelling).to receive(:execute) do |step|
+      step.context.initial_labels = {
+        "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Test", description: "Desc")
+      }
+      step.context
+    end
+    allow_any_instance_of(Broadlistening::Steps::MergeLabelling).to receive(:execute) do |step|
+      step.context.labels = {
+        "0" => Broadlistening::ClusterLabel.new(cluster_id: "0", level: 0, label: "All", description: "All opinions"),
+        "1_0" => Broadlistening::ClusterLabel.new(cluster_id: "1_0", level: 1, label: "Test", description: "Desc")
+      }
+      step.context
+    end
+    allow_any_instance_of(Broadlistening::Steps::Overview).to receive(:execute) do |step|
+      step.context.instance_variable_set(:@overview, "test overview")
+      step.context
+    end
+    allow_any_instance_of(Broadlistening::Steps::Aggregation).to receive(:execute) do |step|
+      step.context.result = Broadlistening::PipelineResult.new(
+        arguments: step.context.arguments.map do |arg|
+          Broadlistening::PipelineResult::Argument.new(
+            arg_id: arg.arg_id,
+            argument: arg.argument,
+            comment_id: arg.comment_id.to_i,
+            x: arg.x,
+            y: arg.y,
+            p: 0,
+            cluster_ids: arg.cluster_ids || [],
+            attributes: {},
+            url: nil
+          )
+        end,
+        clusters: [Broadlistening::PipelineResult::Cluster.root(step.context.arguments.size)],
+        comments: {},
+        property_map: {},
+        translations: {},
+        overview: "test overview",
+        config: {},
+        comment_num: step.context.arguments.size
+      )
+      step.context
+    end
   end
 
   describe "#run with incremental execution" do
@@ -137,10 +178,15 @@ RSpec.describe Broadlistening::Pipeline do
       pipeline = described_class.new(config_options, spec_loader: spec_loader)
       pipeline.run(comments, output_dir: output_dir)
 
-      expect(File.exist?(File.join(output_dir, "extraction.json"))).to be true
+      # CSV format for extraction (args.csv + relations.csv)
+      expect(File.exist?(File.join(output_dir, "args.csv"))).to be true
+      expect(File.exist?(File.join(output_dir, "relations.csv"))).to be true
+      # JSON format for embedding (kept as JSON)
       expect(File.exist?(File.join(output_dir, "embeddings.json"))).to be true
-      expect(File.exist?(File.join(output_dir, "clustering.json"))).to be true
-      expect(File.exist?(File.join(output_dir, "result.json"))).to be true
+      # CSV format for clustering
+      expect(File.exist?(File.join(output_dir, "hierarchical_clusters.csv"))).to be true
+      # JSON format for final result
+      expect(File.exist?(File.join(output_dir, "hierarchical_result.json"))).to be true
     end
 
     it "skips steps when nothing changed" do
@@ -179,7 +225,7 @@ RSpec.describe Broadlistening::Pipeline do
       pipeline1.run(comments, output_dir: output_dir)
 
       # Delete clustering output
-      FileUtils.rm(File.join(output_dir, "clustering.json"))
+      FileUtils.rm(File.join(output_dir, "hierarchical_clusters.csv"))
 
       # Second run - should re-run clustering and dependent steps
       step_log = []

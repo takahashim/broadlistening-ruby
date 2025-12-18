@@ -5,6 +5,27 @@ require 'tempfile'
 require 'fileutils'
 
 RSpec.describe Broadlistening::Planner do
+  # Helper to create output files matching Context::OUTPUT_FILES format
+  def create_output_files_for_planner_test(dir)
+    Broadlistening::Context::OUTPUT_FILES.each do |_step, file_config|
+      case file_config
+      when Hash
+        # Multiple files (e.g., extraction)
+        file_config.each_value do |filename|
+          File.write(File.join(dir, filename), "arg-id,argument\nA1_0,test")
+        end
+      when String
+        if file_config.end_with?('.csv')
+          File.write(File.join(dir, file_config), "header\nvalue")
+        elsif file_config.end_with?('.txt')
+          File.write(File.join(dir, file_config), "test content")
+        else
+          File.write(File.join(dir, file_config), '{}')
+        end
+      end
+    end
+  end
+
   let(:output_dir) { Dir.mktmpdir }
   let(:config) do
     Broadlistening::Config.new(
@@ -109,10 +130,8 @@ RSpec.describe Broadlistening::Planner do
           status: 'completed',
           completed_jobs: completed_jobs_data
         }.to_json)
-        # Create output files
-        spec_loader.specs.each do |spec|
-          File.write(File.join(output_dir, spec[:output_file]), '{}')
-        end
+        # Create output files using Context::OUTPUT_FILES format
+        create_output_files_for_planner_test(output_dir)
       end
 
       let(:fresh_status) { Broadlistening::Status.new(output_dir) }
@@ -150,10 +169,8 @@ RSpec.describe Broadlistening::Planner do
           status: 'completed',
           completed_jobs: completed_jobs_data
         }.to_json)
-        # Create output files
-        spec_loader.specs.each do |spec|
-          File.write(File.join(output_dir, spec[:output_file]), '{}')
-        end
+        # Create output files using Context::OUTPUT_FILES format
+        create_output_files_for_planner_test(output_dir)
       end
 
       let(:fresh_status) { Broadlistening::Status.new(output_dir) }
@@ -199,11 +216,24 @@ RSpec.describe Broadlistening::Planner do
           status: 'completed',
           completed_jobs: completed_jobs_data
         }.to_json)
-        # Create output files except extraction
-        spec_loader.specs.each do |spec|
-          next if spec[:step] == :extraction
+        # Create output files except extraction (to test missing output detection)
+        Broadlistening::Context::OUTPUT_FILES.each do |step, file_config|
+          next if step == :extraction
 
-          File.write(File.join(output_dir, spec[:output_file]), '{}')
+          case file_config
+          when Hash
+            file_config.each_value do |filename|
+              File.write(File.join(output_dir, filename), "arg-id,argument\nA1_0,test")
+            end
+          when String
+            if file_config.end_with?('.csv')
+              File.write(File.join(output_dir, file_config), "header\nvalue")
+            elsif file_config.end_with?('.txt')
+              File.write(File.join(output_dir, file_config), "test content")
+            else
+              File.write(File.join(output_dir, file_config), '{}')
+            end
+          end
         end
       end
 
@@ -256,10 +286,8 @@ RSpec.describe Broadlistening::Planner do
           status: 'completed',
           completed_jobs: completed_jobs_data
         }.to_json)
-        # Create output files
-        spec_loader.specs.each do |spec|
-          File.write(File.join(output_dir, spec[:output_file]), '{}')
-        end
+        # Create output files using Context::OUTPUT_FILES (CSV/TXT/JSON format)
+        create_output_files_for_planner_test(output_dir)
       end
 
       # Create a fresh planner that reads the saved status
@@ -311,10 +339,8 @@ RSpec.describe Broadlistening::Planner do
           status: 'completed',
           completed_jobs: completed_jobs_data
         }.to_json)
-        # Create output files
-        spec_loader.specs.each do |spec|
-          File.write(File.join(output_dir, spec[:output_file]), '{}')
-        end
+        # Create output files using Context::OUTPUT_FILES format
+        create_output_files_for_planner_test(output_dir)
       end
 
       let(:fresh_status) { Broadlistening::Status.new(output_dir) }

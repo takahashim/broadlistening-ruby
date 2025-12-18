@@ -69,8 +69,9 @@ module Broadlistening
       return [ true, "no trace of previous run" ] unless prev_job
 
       # 出力ファイルの存在確認
-      output_file = output_dir / spec[:output_file]
-      return [ true, "previous output not found" ] unless output_file.exist?
+      unless output_files_exist?(spec[:step])
+        return [ true, "previous output not found" ]
+      end
 
       # 依存ステップの確認
       deps = spec[:dependencies][:steps]
@@ -90,6 +91,22 @@ module Broadlistening
 
     def find_previous_job(step_name)
       @all_completed_jobs.find { |j| j.step == step_name.to_s }
+    end
+
+    def output_files_exist?(step_name)
+      file_config = Context::OUTPUT_FILES[step_name]
+      return false unless file_config
+
+      case file_config
+      when Hash
+        # Multiple files (e.g., extraction: { args: "args.csv", relations: "relations.csv" })
+        file_config.values.all? { |filename| (output_dir / filename).exist? }
+      when String
+        # Single file
+        (output_dir / file_config).exist?
+      else
+        false
+      end
     end
 
     def detect_param_changes(spec, prev_job)
