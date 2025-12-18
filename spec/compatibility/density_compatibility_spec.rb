@@ -26,9 +26,11 @@ RSpec.describe "Density Calculation Compatibility" do
   end
 
   describe "DensityCalculator.calculate_with_ranks" do
+    let(:cluster_points) { Broadlistening::DensityCalculator::ClusterPoints }
+
     let(:ruby_clusters) do
-      clusters.transform_values do |data|
-        { points: data["points"], level: data["level"] }
+      clusters.map do |cluster_id, data|
+        cluster_points.new(cluster_id: cluster_id, points: data["points"], level: data["level"])
       end
     end
 

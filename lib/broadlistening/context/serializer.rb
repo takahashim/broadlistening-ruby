@@ -89,7 +89,8 @@ module Broadlistening
       end
 
       def save_merge_labels(filename)
-        densities = DensityCalculator.new(@context.arguments, @context.labels).calculate
+        clusters = DensityCalculator::ClusterPoints.build_from(@context.arguments, @context.labels)
+        densities = DensityCalculator.calculate_with_ranks(clusters)
 
         CSV.open(@dir / filename, "w") do |csv|
           csv << [ "level", "id", "label", "description", "value", "parent",
@@ -157,7 +158,7 @@ module Broadlistening
       def merge_labels_row(label, densities)
         value = @context.arguments.count { |a| a.cluster_ids&.include?(label.cluster_id) }
         parent = find_parent_cluster(label.cluster_id)
-        density_info = densities[label.cluster_id] || {}
+        density_info = densities[label.cluster_id]
 
         [
           label.level,
@@ -166,9 +167,9 @@ module Broadlistening
           label.description,
           value,
           parent,
-          density_info[:density] || "",
-          density_info[:density_rank] || "",
-          density_info[:density_rank_percentile] || ""
+          density_info&.density || "",
+          density_info&.density_rank || "",
+          density_info&.density_rank_percentile || ""
         ]
       end
 

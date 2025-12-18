@@ -58,13 +58,15 @@ RSpec.describe Broadlistening::DensityCalculator do
   end
 
   describe ".calculate_with_ranks" do
+    let(:cluster_points) { Broadlistening::DensityCalculator::ClusterPoints }
+
     let(:clusters) do
-      {
-        "1_0" => { points: [ [ 0.0, 0.0 ], [ 1.0, 0.0 ] ], level: 1 },      # spread = 1.0
-        "1_1" => { points: [ [ 0.0, 0.0 ], [ 0.1, 0.0 ] ], level: 1 },      # spread = 0.1 (denser)
-        "2_0" => { points: [ [ 0.0, 0.0 ], [ 2.0, 0.0 ] ], level: 2 },      # spread = 2.0
-        "2_1" => { points: [ [ 0.0, 0.0 ], [ 0.5, 0.0 ] ], level: 2 }       # spread = 0.5 (denser)
-      }
+      [
+        cluster_points.new(cluster_id: "1_0", points: [ [ 0.0, 0.0 ], [ 1.0, 0.0 ] ], level: 1),  # spread = 1.0
+        cluster_points.new(cluster_id: "1_1", points: [ [ 0.0, 0.0 ], [ 0.1, 0.0 ] ], level: 1),  # spread = 0.1 (denser)
+        cluster_points.new(cluster_id: "2_0", points: [ [ 0.0, 0.0 ], [ 2.0, 0.0 ] ], level: 2),  # spread = 2.0
+        cluster_points.new(cluster_id: "2_1", points: [ [ 0.0, 0.0 ], [ 0.5, 0.0 ] ], level: 2)   # spread = 0.5 (denser)
+      ]
     end
 
     it "calculates density for each cluster" do
@@ -101,9 +103,9 @@ RSpec.describe Broadlistening::DensityCalculator do
     end
 
     it "handles single cluster in a level" do
-      single_cluster = {
-        "1_0" => { points: [ [ 0.0, 0.0 ], [ 1.0, 0.0 ] ], level: 1 }
-      }
+      single_cluster = [
+        cluster_points.new(cluster_id: "1_0", points: [ [ 0.0, 0.0 ], [ 1.0, 0.0 ] ], level: 1)
+      ]
       result = described_class.calculate_with_ranks(single_cluster)
 
       expect(result["1_0"].density_rank).to eq(1)
@@ -111,7 +113,7 @@ RSpec.describe Broadlistening::DensityCalculator do
     end
 
     it "returns empty hash for empty input" do
-      result = described_class.calculate_with_ranks({})
+      result = described_class.calculate_with_ranks([])
       expect(result).to eq({})
     end
   end

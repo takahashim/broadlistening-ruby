@@ -72,26 +72,8 @@ module Broadlistening
       def calculate_density_data
         return {} if context.arguments.empty?
 
-        # Build cluster data structure for density calculation
-        cluster_data = {}
-
-        context.labels.each_value do |label|
-          cluster_id = label.cluster_id
-          points = context.arguments.select { |arg| arg.in_cluster?(cluster_id) }
-                                    .map { |arg| [ arg.x, arg.y ] }
-                                    .reject { |p| p.any?(&:nil?) }
-
-          next if points.empty?
-
-          cluster_data[cluster_id] = {
-            points: points,
-            level: label.level
-          }
-        end
-
-        return {} if cluster_data.empty?
-
-        DensityCalculator.calculate_with_ranks(cluster_data)
+        clusters = DensityCalculator::ClusterPoints.build_from(context.arguments, context.labels)
+        DensityCalculator.calculate_with_ranks(clusters)
       end
 
       def count_arguments_in_cluster(cluster_id)
