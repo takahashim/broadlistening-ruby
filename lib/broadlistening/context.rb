@@ -40,18 +40,30 @@ module Broadlistening
       context
     end
 
-    def initialize
-      @comments = []
-      @arguments = []
-      @relations = []
-      @cluster_results = ClusterResults.new
-      @umap_coords = nil
-      @initial_labels = {}
-      @labels = {}
-      @overview = nil
-      @result = nil
-      @output_dir = nil
-      @token_usage = TokenUsage.new
+    def initialize(
+      comments: [],
+      arguments: [],
+      relations: [],
+      cluster_results: nil,
+      umap_coords: nil,
+      initial_labels: {},
+      labels: {},
+      overview: nil,
+      result: nil,
+      output_dir: nil,
+      token_usage: nil
+    )
+      @comments = comments
+      @arguments = arguments
+      @relations = relations
+      @cluster_results = cluster_results || ClusterResults.new
+      @umap_coords = umap_coords
+      @initial_labels = initial_labels
+      @labels = labels
+      @overview = overview
+      @result = result
+      @output_dir = output_dir
+      @token_usage = token_usage || TokenUsage.new
     end
 
     def add_token_usage(usage)
