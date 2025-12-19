@@ -235,7 +235,7 @@ The pipeline result is a Hash with the following structure:
 - numo-narray ~> 0.9
 - ruby-openai ~> 7.0
 - parallel ~> 1.20
-- rice ~> 4.6.0
+- rice ~> 4.7.0
 - umappp ~> 0.2
 
 ### Installing umappp
@@ -249,8 +249,6 @@ CXX=clang++ gem install umappp
 # Linux
 gem install umappp
 ```
-
-**Note**: Use Rice 4.6.x due to compatibility issues with Rice 4.7.x.
 
 ## Development
 

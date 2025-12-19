@@ -235,7 +235,7 @@ GPU を搭載したマシンでローカル LLM を使用したい場合は、�
 - numo-narray ~> 0.9
 - ruby-openai ~> 7.0
 - parallel ~> 1.20
-- rice ~> 4.6.0
+- rice ~> 4.7.0
 - umappp ~> 0.2
 
 ### umappp のインストール
@@ -249,8 +249,6 @@ CXX=clang++ gem install umappp
 # Linux
 gem install umappp
 ```
-
-**注意**: Rice 4.7.x との互換性問題があるため、Rice 4.6.x を使用してください。
 
 ## 開発
 
