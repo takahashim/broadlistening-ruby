@@ -25,7 +25,10 @@ module Broadlistening
       cluster_nums = hash[:cluster_nums] || hash.dig(:hierarchical_clustering, :cluster_nums)
       workers = hash[:workers] || hash.dig(:extraction, :workers)
       limit = hash[:limit] || hash.dig(:extraction, :limit)
-      hidden_properties = hash[:hidden_properties] || hash.dig(:aggregation, :hidden_properties)
+      # Python uses hierarchical_aggregation.hidden_properties
+      hidden_properties = hash[:hidden_properties] ||
+                          hash.dig(:hierarchical_aggregation, :hidden_properties) ||
+                          hash.dig(:aggregation, :hidden_properties)
 
       new(
         api_key: hash[:api_key],
@@ -67,9 +70,9 @@ module Broadlistening
       @limit = options[:limit] || DEFAULT_LIMIT
       @prompts = default_prompts.merge(options[:prompts] || {})
       @api_key = options[:api_key] || @provider_obj.api_key
-      @enable_source_link = options.fetch(:enable_source_link, false)
+      @enable_source_link = options[:enable_source_link].nil? ? false : options[:enable_source_link]
       @hidden_properties = options.fetch(:hidden_properties, {}) || {}
-      @is_pubcom = options.fetch(:is_pubcom, false)
+      @is_pubcom = options[:is_pubcom].nil? ? false : options[:is_pubcom]
       @api_base_url = options[:api_base_url] || @provider_obj.base_url
       @azure_api_version = options[:azure_api_version] || ENV.fetch("AZURE_API_VERSION", DEFAULT_AZURE_API_VERSION)
       @input = options[:input]

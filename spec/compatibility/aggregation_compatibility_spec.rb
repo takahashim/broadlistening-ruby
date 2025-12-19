@@ -182,6 +182,17 @@ RSpec.describe "Aggregation Compatibility" do
         expect(root[:parent]).to eq("")
       end
 
+      it "has root cluster with label '全体' (matching Python)" do
+        # Python hierarchical_aggregation.py: label="全体"
+        root = ruby_result[:clusters].find { |c| c[:level] == 0 }
+        expect(root[:label]).to eq("全体")
+      end
+
+      it "has root cluster with empty takeaway" do
+        root = ruby_result[:clusters].find { |c| c[:level] == 0 }
+        expect(root[:takeaway]).to eq("")
+      end
+
       it "has required keys for each cluster" do
         required_keys = %i[level id label takeaway value parent]
         ruby_result[:clusters].each do |cluster|
@@ -245,6 +256,21 @@ RSpec.describe "Aggregation Compatibility" do
     describe "config" do
       it "is a hash" do
         expect(ruby_result[:config]).to be_a(Hash)
+      end
+    end
+
+    describe "comment_num field" do
+      # Python: results["comment_num"] = len(comments)
+      it "is included in result" do
+        expect(ruby_result).to have_key(:comment_num)
+      end
+
+      it "equals the total number of input comments" do
+        expect(ruby_result[:comment_num]).to eq(comments.size)
+      end
+
+      it "is an integer" do
+        expect(ruby_result[:comment_num]).to be_a(Integer)
       end
     end
 

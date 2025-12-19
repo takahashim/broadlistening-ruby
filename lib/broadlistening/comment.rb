@@ -12,13 +12,15 @@ module Broadlistening
   #   comment.body      # => "I think..."
   #   comment.attributes # => { "age" => "30代" }
   class Comment
-    attr_accessor :id, :body, :proposal_id, :source_url, :attributes, :properties
+    attr_accessor :id, :body, :proposal_id, :source_url, :source, :url, :attributes, :properties
 
-    def initialize(id:, body:, proposal_id: nil, source_url: nil, attributes: nil, properties: nil)
+    def initialize(id:, body:, proposal_id: nil, source_url: nil, source: nil, url: nil, attributes: nil, properties: nil)
       @id = id
       @body = body
       @proposal_id = proposal_id
       @source_url = source_url
+      @source = source
+      @url = url
       @attributes = attributes
       @properties = properties
     end
@@ -34,6 +36,8 @@ module Broadlistening
         body: hash[:body] || hash["body"],
         proposal_id: hash[:proposal_id] || hash["proposal_id"],
         source_url: extract_source_url(hash),
+        source: hash[:source] || hash["source"],
+        url: hash[:url] || hash["url"],
         attributes: extract_attributes(hash),
         properties: extract_properties(hash, property_names)
       )
@@ -64,6 +68,8 @@ module Broadlistening
         body: @body,
         proposal_id: @proposal_id,
         source_url: @source_url,
+        source: @source,
+        url: @url,
         attributes: @attributes,
         properties: @properties
       }

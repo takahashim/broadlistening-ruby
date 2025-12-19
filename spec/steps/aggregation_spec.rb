@@ -501,7 +501,8 @@ RSpec.describe Broadlistening::Steps::Aggregation do
       it "includes correct headers" do
         step_with_pubcom.execute
         csv = CSV.read(csv_path, headers: true)
-        expect(csv.headers).to include("comment_id", "original_comment", "arg_id", "argument", "category_id", "category", "x", "y")
+        # Python format uses hyphens for comment-id and original-comment
+        expect(csv.headers).to include("comment-id", "original-comment", "arg_id", "argument", "category_id", "category", "x", "y")
       end
 
       it "includes all arguments in CSV" do
@@ -514,7 +515,7 @@ RSpec.describe Broadlistening::Steps::Aggregation do
         step_with_pubcom.execute
         csv = CSV.read(csv_path, headers: true)
         row = csv.find { |r| r["arg_id"] == "A1_0" }
-        expect(row["original_comment"]).to eq("環境問題への対策が必要です")
+        expect(row["original-comment"]).to eq("環境問題への対策が必要です")
       end
 
       it "includes category from level 1 cluster" do

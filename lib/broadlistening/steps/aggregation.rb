@@ -161,9 +161,26 @@ module Broadlistening
       end
 
       def csv_headers
-        headers = %w[comment_id original_comment arg_id argument category_id category x y]
+        # Python format: comment-id, original-comment, arg_id, argument, category_id, category, source, url, x, y, attribute_*
+        headers = %w[comment-id original-comment arg_id argument category_id category]
+        headers << "source" if has_source_data?
+        headers << "url" if has_url_data?
+        headers << "x" if has_coordinate_data?
+        headers << "y" if has_coordinate_data?
         headers += attribute_columns
         headers
+      end
+
+      def has_source_data?
+        context.comments.any? { |c| c.source && !c.source.empty? }
+      end
+
+      def has_url_data?
+        context.comments.any? { |c| c.url && !c.url.empty? }
+      end
+
+      def has_coordinate_data?
+        context.arguments.any? { |a| a.x && a.y }
       end
 
       def build_csv_row(arg, level1_labels)
@@ -171,16 +188,20 @@ module Broadlistening
         level1_cluster_id = find_level1_cluster_id(arg)
         category_label = level1_labels[level1_cluster_id] || ""
 
+        # Python format: comment-id, original-comment, arg_id, argument, category_id, category, source, url, x, y, attribute_*
         row = [
           arg.comment_id,
           comment&.body || "",
           arg.arg_id,
           arg.argument,
           level1_cluster_id,
-          category_label,
-          arg.x,
-          arg.y
+          category_label
         ]
+
+        row << (comment&.source || "") if has_source_data?
+        row << (comment&.url || "") if has_url_data?
+        row << arg.x if has_coordinate_data?
+        row << arg.y if has_coordinate_data?
 
         # Add attribute values
         attribute_columns.each do |attr_name|
