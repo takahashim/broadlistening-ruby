@@ -9,3 +9,6 @@
 
 # rspec failure tracking
 .rspec_status
+
+# Local environment variables for integration tests
+.env.test.local

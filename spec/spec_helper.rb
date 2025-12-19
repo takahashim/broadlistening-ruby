@@ -24,4 +24,12 @@ RSpec.configure do |config|
   config.before do
     WebMock.reset!
   end
+
+  # Integration test configuration
+  config.define_derived_metadata(file_path: %r{spec/integration}) do |metadata|
+    metadata[:integration] = true
+  end
+
+  # Skip integration tests unless RUN_INTEGRATION environment variable is set
+  config.filter_run_excluding integration: true unless ENV["RUN_INTEGRATION"]
 end
