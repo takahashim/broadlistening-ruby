@@ -49,10 +49,20 @@ module Broadlistening
         )
       end
       validate_response!(response)
-      response["data"].sort_by { |d| d["index"] }.map { |d| d["embedding"] }
+      extract_embeddings(response["data"])
     end
 
     private
+
+    def extract_embeddings(data)
+      # Sort by index if available (OpenAI), otherwise preserve order (Gemini)
+      sorted = if data.first&.key?("index")
+                 data.sort_by { |d| d["index"] }
+               else
+                 data
+               end
+      sorted.map { |d| d["embedding"] }
+    end
 
     def build_chat_params(system, user, json_mode, json_schema)
       params = {
