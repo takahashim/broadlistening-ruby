@@ -34,6 +34,7 @@ require_relative "broadlistening/context/serializer"
 require_relative "broadlistening/pipeline"
 require_relative "broadlistening/cli"
 
+require_relative "broadlistening/json_schemas"
 require_relative "broadlistening/llm_client"
 require_relative "broadlistening/kmeans"
 require_relative "broadlistening/hierarchical_clustering"

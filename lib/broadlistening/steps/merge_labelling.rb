@@ -47,7 +47,7 @@ module Broadlistening
         result = llm_client.chat(
           system: config.prompts[:merge_labelling],
           user: input,
-          json_mode: true
+          json_schema: JsonSchemas::LABELLING
         )
         context.add_token_usage(result.token_usage)
 

@@ -27,8 +27,8 @@ module Broadlistening
       )
     end
 
-    def chat(system:, user:, json_mode: false)
-      params = build_chat_params(system, user, json_mode)
+    def chat(system:, user:, json_mode: false, json_schema: nil)
+      params = build_chat_params(system, user, json_mode, json_schema)
       response = with_retry { @client.chat(parameters: params) }
       validate_response!(response)
 
@@ -54,7 +54,7 @@ module Broadlistening
 
     private
 
-    def build_chat_params(system, user, json_mode)
+    def build_chat_params(system, user, json_mode, json_schema)
       params = {
         model: @config.model,
         messages: [
@@ -62,7 +62,16 @@ module Broadlistening
           { role: "user", content: user }
         ]
       }
-      params[:response_format] = { type: "json_object" } if json_mode
+      if json_schema
+        # Structured Outputs: Use JSON schema for strict response format
+        params[:response_format] = {
+          type: "json_schema",
+          json_schema: json_schema
+        }
+      elsif json_mode
+        # Simple JSON mode: requires "JSON" in prompt
+        params[:response_format] = { type: "json_object" }
+      end
       params
     end
 

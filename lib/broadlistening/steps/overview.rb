@@ -25,13 +25,21 @@ module Broadlistening
 
         result = llm_client.chat(
           system: config.prompts[:overview],
-          user: input
+          user: input,
+          json_schema: JsonSchemas::OVERVIEW
         )
         context.add_token_usage(result.token_usage)
-        result.content
+        parse_overview_response(result.content)
       rescue StandardError => e
         warn "Failed to generate overview: #{e.message}"
         ""
+      end
+
+      def parse_overview_response(content)
+        parsed = JSON.parse(content)
+        parsed["summary"] || content
+      rescue JSON::ParserError
+        content
       end
     end
   end

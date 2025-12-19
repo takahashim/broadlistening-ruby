@@ -40,7 +40,7 @@ module Broadlistening
         result = llm_client.chat(
           system: config.prompts[:extraction],
           user: comment.body,
-          json_mode: true
+          json_schema: JsonSchemas::EXTRACTION
         )
         context.add_token_usage(result.token_usage)
         parse_extraction_response(result.content)
