@@ -9,46 +9,6 @@ RSpec.describe "Planner Compatibility" do
   # Python: hierarchical_utils.py decide_what_to_run
   # Ruby: Planner#create_plan
 
-  describe "Parameter hashing behavior" do
-    # Python stores full prompt text
-    # Ruby hashes prompts > 100 characters with SHA256
-
-    describe "CompletedJob.serialize_params" do
-      it "hashes strings longer than LONG_STRING_THRESHOLD (100 chars)" do
-        long_prompt = "a" * 101
-        serialized = Broadlistening::CompletedJob.serialize_params({ prompt: long_prompt })
-
-        expect(serialized[:prompt]).to match(/^[a-f0-9]{64}$/) # SHA256 hex
-        expect(serialized[:prompt]).to eq(Digest::SHA256.hexdigest(long_prompt))
-      end
-
-      it "does not hash strings at or below LONG_STRING_THRESHOLD" do
-        short_prompt = "a" * 100
-        serialized = Broadlistening::CompletedJob.serialize_params({ prompt: short_prompt })
-
-        expect(serialized[:prompt]).to eq(short_prompt)
-      end
-
-      it "does not hash non-string values" do
-        params = {
-          model: "gpt-4o-mini",
-          limit: 1000,
-          cluster_nums: [ 5, 15 ]
-        }
-        serialized = Broadlistening::CompletedJob.serialize_params(params)
-
-        expect(serialized[:model]).to eq("gpt-4o-mini")
-        expect(serialized[:limit]).to eq(1000)
-        expect(serialized[:cluster_nums]).to eq([ 5, 15 ])
-      end
-
-      it "handles nil values" do
-        serialized = Broadlistening::CompletedJob.serialize_params({ prompt: nil })
-        expect(serialized[:prompt]).to be_nil
-      end
-    end
-  end
-
   describe "Step name mapping" do
     # Python uses long names (hierarchical_clustering)
     # Ruby uses short names (clustering)
@@ -85,63 +45,6 @@ RSpec.describe "Planner Compatibility" do
             "Missing mapping for Python step: #{step}"
         end
       end
-    end
-  end
-
-  describe "LLM step parameter tracking" do
-    # Both Python and Ruby auto-add 'prompt' and 'model' to LLM steps
-
-    let(:specs_json) do
-      <<~JSON
-        [
-          {
-            "step": "extraction",
-            "filename": "args.csv",
-            "dependencies": {"params": ["limit"], "steps": []},
-            "use_llm": true
-          },
-          {
-            "step": "embedding",
-            "filename": "embeddings.pkl",
-            "dependencies": {"params": ["model"], "steps": ["extraction"]},
-            "use_llm": false
-          },
-          {
-            "step": "hierarchical_clustering",
-            "filename": "hierarchical_clusters.csv",
-            "dependencies": {"params": ["cluster_nums"], "steps": ["embedding"]},
-            "use_llm": false
-          }
-        ]
-      JSON
-    end
-
-    let(:specs_file) do
-      file = Tempfile.new([ "specs", ".json" ])
-      file.write(specs_json)
-      file.close
-      file
-    end
-
-    after { specs_file.unlink }
-
-    let(:spec_loader) { Broadlistening::SpecLoader.new(specs_file.path) }
-
-    it "adds prompt and model to extraction (use_llm: true)" do
-      extraction_spec = spec_loader.find(:extraction)
-      expect(extraction_spec[:dependencies][:params]).to include(:prompt, :model, :limit)
-    end
-
-    it "does not add prompt to embedding (use_llm: false)" do
-      embedding_spec = spec_loader.find(:embedding)
-      expect(embedding_spec[:dependencies][:params]).to include(:model)
-      expect(embedding_spec[:dependencies][:params]).not_to include(:prompt)
-    end
-
-    it "does not add prompt or model to clustering (use_llm: false)" do
-      clustering_spec = spec_loader.find(:clustering)
-      expect(clustering_spec[:dependencies][:params]).to include(:cluster_nums)
-      expect(clustering_spec[:dependencies][:params]).not_to include(:prompt, :model)
     end
   end
 

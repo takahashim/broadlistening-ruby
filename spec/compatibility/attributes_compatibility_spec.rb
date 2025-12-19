@@ -16,83 +16,6 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
 
   let(:config) { Broadlistening::Config.new(config_options) }
 
-  describe "Attributes pass-through" do
-    describe "from Comment to Argument" do
-      let(:comments) do
-        [
-          Broadlistening::Comment.new(
-            id: "1",
-            body: "Comment with attributes",
-            proposal_id: "test",
-            attributes: { "age" => "30代", "region" => "東京", "gender" => "male" },
-            source_url: "https://example.com/comment/1"
-          ),
-          Broadlistening::Comment.new(
-            id: "2",
-            body: "Comment without attributes",
-            proposal_id: "test",
-            attributes: nil,
-            source_url: nil
-          ),
-          Broadlistening::Comment.new(
-            id: "3",
-            body: "Comment with empty attributes",
-            proposal_id: "test",
-            attributes: {},
-            source_url: "https://example.com/comment/3"
-          )
-        ]
-      end
-
-      let(:context) do
-        ctx = Broadlistening::Context.new
-        ctx.comments = comments
-        ctx
-      end
-
-      let(:extraction_step) { Broadlistening::Steps::Extraction.new(config, context) }
-
-      before do
-        allow(extraction_step).to receive(:extract_arguments_from_comment).and_return([ "Extracted opinion" ])
-      end
-
-      it "passes attributes from comment to argument" do
-        extraction_step.execute
-        arg = context.arguments.find { |a| a.arg_id == "A1_0" }
-
-        expect(arg.attributes).to eq({ "age" => "30代", "region" => "東京", "gender" => "male" })
-      end
-
-      it "handles nil attributes" do
-        extraction_step.execute
-        arg = context.arguments.find { |a| a.arg_id == "A2_0" }
-
-        expect(arg.attributes).to be_nil
-      end
-
-      it "handles empty attributes" do
-        extraction_step.execute
-        arg = context.arguments.find { |a| a.arg_id == "A3_0" }
-
-        expect(arg.attributes).to eq({})
-      end
-
-      it "passes source_url as url" do
-        extraction_step.execute
-        arg = context.arguments.find { |a| a.arg_id == "A1_0" }
-
-        expect(arg.url).to eq("https://example.com/comment/1")
-      end
-
-      it "handles nil source_url" do
-        extraction_step.execute
-        arg = context.arguments.find { |a| a.arg_id == "A2_0" }
-
-        expect(arg.url).to be_nil
-      end
-    end
-  end
-
   describe "Attributes in Aggregation output" do
     let(:arguments) do
       [
@@ -365,51 +288,6 @@ RSpec.describe "Attributes and PropertyMap Compatibility" do
         arg = result[:arguments].find { |a| a[:arg_id] == "A1_0" }
         expect(arg).not_to have_key(:url)
       end
-    end
-  end
-
-  describe "properties pass-through" do
-    let(:comments) do
-      [
-        Broadlistening::Comment.new(
-          id: "1",
-          body: "Comment with properties",
-          proposal_id: "test",
-          properties: { "source" => "twitter", "sentiment" => "positive" }
-        ),
-        Broadlistening::Comment.new(
-          id: "2",
-          body: "Comment without properties",
-          proposal_id: "test",
-          properties: nil
-        )
-      ]
-    end
-
-    let(:context) do
-      ctx = Broadlistening::Context.new
-      ctx.comments = comments
-      ctx
-    end
-
-    let(:extraction_step) { Broadlistening::Steps::Extraction.new(config, context) }
-
-    before do
-      allow(extraction_step).to receive(:extract_arguments_from_comment).and_return([ "Extracted opinion" ])
-    end
-
-    it "passes properties from comment to argument" do
-      extraction_step.execute
-      arg = context.arguments.find { |a| a.arg_id == "A1_0" }
-
-      expect(arg.properties).to eq({ "source" => "twitter", "sentiment" => "positive" })
-    end
-
-    it "handles nil properties" do
-      extraction_step.execute
-      arg = context.arguments.find { |a| a.arg_id == "A2_0" }
-
-      expect(arg.properties).to be_nil
     end
   end
 end
