@@ -63,6 +63,10 @@ module Broadlistening
 
       def parse_label_response(content, level, cluster_id)
         parsed = JSON.parse(content)
+        # Handle case where LLM returns an array instead of object
+        parsed = parsed.first if parsed.is_a?(Array)
+        raise JSON::ParserError, "Invalid response format" unless parsed.is_a?(Hash)
+
         ClusterLabel.new(
           cluster_id: "#{level}_#{cluster_id}",
           level: level,

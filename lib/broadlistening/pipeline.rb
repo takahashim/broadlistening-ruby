@@ -58,6 +58,9 @@ module Broadlistening
       # Normalize comments if not already loaded
       context.comments = normalize_comments(comments) if context.comments.empty?
 
+      # Apply auto cluster_nums calculation if enabled
+      @config = @config.with_calculated_cluster_nums(context.comments.size)
+
       planner = Planner.new(
         config: @config,
         status: status,

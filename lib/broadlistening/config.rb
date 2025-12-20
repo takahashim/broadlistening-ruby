@@ -7,12 +7,24 @@ module Broadlistening
     attr_reader :model, :embedding_model, :provider, :cluster_nums, :workers, :prompts, :api_key,
                 :enable_source_link, :hidden_properties, :is_pubcom,
                 :api_base_url, :local_llm_address, :azure_api_version,
-                :input, :question, :name, :intro, :limit
+                :input, :question, :name, :intro, :limit, :auto_cluster_nums
 
     DEFAULT_CLUSTER_NUMS = [ 5, 15 ].freeze
     DEFAULT_WORKERS = 10
     DEFAULT_LIMIT = 1000
     DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
+
+    # Calculate cluster_nums based on comment count (compatible with kouchou-ai)
+    # Level 1: cube root of comment count, clamped to 2-10
+    # Level 2: square of level 1, clamped to 2-1000
+    #
+    # @param comment_count [Integer] Number of comments to process
+    # @return [Array<Integer>] Array of [lv1, lv2] cluster numbers
+    def self.calculate_cluster_nums(comment_count)
+      lv1 = [ [ 2, (comment_count ** (1.0 / 3)).round ].max, 10 ].min
+      lv2 = [ [ 2, lv1 * lv1 ].max, 1000 ].min
+      [ lv1, lv2 ]
+    end
 
     def self.from_json(json_string)
       data = JSON.parse(json_string, symbolize_names: true)
@@ -48,7 +60,8 @@ module Broadlistening
         input: hash[:input],
         question: hash[:question],
         name: hash[:name],
-        intro: hash[:intro]
+        intro: hash[:intro],
+        auto_cluster_nums: hash[:auto_cluster_nums]
       )
     end
 
@@ -79,8 +92,28 @@ module Broadlistening
       @question = options[:question]
       @name = options[:name]
       @intro = options[:intro]
+      @auto_cluster_nums = options[:auto_cluster_nums] || false
 
       validate!
+    end
+
+    # Returns a new Config with cluster_nums calculated from comment count
+    # Only applies if auto_cluster_nums is enabled and cluster_nums was not explicitly set
+    #
+    # @param comment_count [Integer] Number of comments to process
+    # @return [Config] New config with calculated cluster_nums (or self if not applicable)
+    def with_calculated_cluster_nums(comment_count)
+      return self unless @auto_cluster_nums
+
+      calculated = self.class.calculate_cluster_nums(comment_count)
+      self.class.new(
+        to_h.merge(
+          api_key: @api_key,
+          cluster_nums: calculated,
+          auto_cluster_nums: false,
+          prompts: @prompts
+        )
+      )
     end
 
     def to_h
@@ -100,7 +133,8 @@ module Broadlistening
         input: input,
         question: question,
         name: name,
-        intro: intro
+        intro: intro,
+        auto_cluster_nums: auto_cluster_nums
       }.compact
     end
 
