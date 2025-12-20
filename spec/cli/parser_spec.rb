@@ -81,6 +81,18 @@ RSpec.describe Broadlistening::Cli::Parser do
       expect(options.input_dir).to eq("/path/to/input")
     end
 
+    it "parses -i/--input option" do
+      options = described_class.parse([ config_file.path, "-i", "/path/to/input.csv" ])
+
+      expect(options.input_file).to eq("/path/to/input.csv")
+    end
+
+    it "parses --input long option" do
+      options = described_class.parse([ config_file.path, "--input", "/path/to/input.json" ])
+
+      expect(options.input_file).to eq("/path/to/input.json")
+    end
+
     it "exits with help message on -h" do
       expect { described_class.parse([ "-h" ]) }.to raise_error(SystemExit) do |error|
         expect(error.status).to eq(0)

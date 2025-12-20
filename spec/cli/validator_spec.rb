@@ -102,7 +102,7 @@ RSpec.describe Broadlistening::Cli::Validator do
       )
 
       expect { described_class.validate_config!(config) }.to raise_error(
-        Broadlistening::ConfigurationError, /Missing required field 'input'/
+        Broadlistening::ConfigurationError, /Missing input file/
       )
     end
 
@@ -133,6 +133,32 @@ RSpec.describe Broadlistening::Cli::Validator do
       config = Broadlistening::Config.from_file(config_file.path)
 
       expect { described_class.validate_config!(config) }.not_to raise_error
+    end
+
+    context "with --input option" do
+      it "uses --input option over config.input" do
+        config = Broadlistening::Config.new(
+          api_key: "test",
+          question: "test question"
+        )
+        options = Broadlistening::Cli::Options.new
+        options.input_file = input_file.path
+
+        expect { described_class.validate_config!(config, options) }.not_to raise_error
+      end
+
+      it "raises error when --input file does not exist" do
+        config = Broadlistening::Config.new(
+          api_key: "test",
+          question: "test question"
+        )
+        options = Broadlistening::Cli::Options.new
+        options.input_file = "/nonexistent/file.csv"
+
+        expect { described_class.validate_config!(config, options) }.to raise_error(
+          Broadlistening::ConfigurationError, /Input file not found/
+        )
+      end
     end
   end
 end

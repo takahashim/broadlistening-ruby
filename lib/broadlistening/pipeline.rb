@@ -37,7 +37,7 @@ module Broadlistening
     # @param from_step [Symbol, nil] Resume from the specified step
     # @param input_dir [String, nil] Directory containing input files for resuming
     # @return [Hash] The result of the pipeline
-    def run(comments, output_dir:, force: false, only: nil, from_step: nil, input_dir: nil)
+    def run(comments, output_dir:, force: false, only: nil, from_step: nil, input_dir: nil, input_file: nil)
       output_path = Pathname.new(output_dir)
       status = Status.new(output_path)
 
@@ -68,7 +68,8 @@ module Broadlistening
         config: @config,
         status: status,
         output_dir: output_path,
-        spec_loader: @spec_loader
+        spec_loader: @spec_loader,
+        input_file: input_file
       )
       plan = planner.create_plan(force: force, only: only, from_step: from_step)
 

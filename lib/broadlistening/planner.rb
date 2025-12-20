@@ -5,14 +5,15 @@ require "digest"
 
 module Broadlistening
   class Planner
-    attr_reader :spec_loader, :config, :status, :output_dir
+    attr_reader :spec_loader, :config, :status, :output_dir, :input_file
 
-    def initialize(config:, status:, output_dir:, spec_loader: nil)
+    def initialize(config:, status:, output_dir:, spec_loader: nil, input_file: nil)
       @config = config
       @status = status
       @output_dir = Pathname.new(output_dir)
       @spec_loader = spec_loader || SpecLoader.default
       @all_completed_jobs = status.all_completed_jobs
+      @input_file = input_file
     end
 
     def create_plan(force: false, only: nil, from_step: nil)
@@ -41,7 +42,7 @@ module Broadlistening
     def extract_current_params(step_name)
       case step_name.to_sym
       when :extraction
-        { model: config.model, prompt: config.prompts[:extraction], limit: config.limit }
+        { model: config.model, prompt: config.prompts[:extraction], limit: config.limit, input: input_file }
       when :embedding
         { model: config.embedding_model }
       when :clustering
@@ -141,7 +142,9 @@ module Broadlistening
     end
 
     def detect_param_changes(spec, prev_job)
-      params_to_check = spec[:dependencies][:params]
+      params_to_check = spec[:dependencies][:params].dup
+      # Ruby CLI specific: also track input file for extraction step
+      params_to_check << :input if spec[:step] == :extraction
       prev_params = prev_job.params
       current_params = extract_current_params(spec[:step])
 

@@ -18,7 +18,7 @@ module Broadlistening
       Validator.validate!(@options)
 
       config = load_config
-      Validator.validate_config!(config)
+      Validator.validate_config!(config, @options)
 
       output_dir = determine_output_dir
       ensure_output_dir(output_dir)
@@ -88,11 +88,13 @@ module Broadlistening
 
     def create_planner(config, output_dir)
       status = Status.new(output_dir)
-      Planner.new(config: config, status: status, output_dir: output_dir)
+      input_path = @options.input_file || config.input
+      Planner.new(config: config, status: status, output_dir: output_dir, input_file: input_path)
     end
 
     def execute_pipeline(config, output_dir)
-      comments = load_comments(config.input)
+      input_path = @options.input_file || config.input
+      comments = load_comments(input_path)
 
       pipeline = Pipeline.new(config)
 
@@ -104,7 +106,8 @@ module Broadlistening
         force: @options.force,
         only: @options.only,
         from_step: @options.from_step,
-        input_dir: @options.input_dir
+        input_dir: @options.input_dir,
+        input_file: input_path
       )
 
       puts ""

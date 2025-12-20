@@ -11,10 +11,11 @@ module Broadlistening
           validate_input_files!(options) if options.from_step && options.input_dir
         end
 
-        def validate_config!(config)
-          raise ConfigurationError, "Missing required field 'input' in config" unless config.input
+        def validate_config!(config, options = nil)
+          input_file = options&.input_file || config.input
+          raise ConfigurationError, "Missing input file: specify with --input or in config" unless input_file
           raise ConfigurationError, "Missing required field 'question' in config" unless config.question
-          raise ConfigurationError, "Input file not found: #{config.input}" unless File.exist?(config.input)
+          raise ConfigurationError, "Input file not found: #{input_file}" unless File.exist?(input_file)
         end
 
         private

@@ -5,7 +5,7 @@ module Broadlistening
     # Options for the broadlistening CLI
     class Options
       attr_accessor :config_path, :force, :only, :dry_run, :verbose,
-                    :from_step, :input_dir
+                    :from_step, :input_dir, :input_file
 
       def initialize
         @force = false
@@ -14,6 +14,7 @@ module Broadlistening
         @verbose = false
         @from_step = nil
         @input_dir = nil
+        @input_file = nil
       end
 
       # Convert to hash for Pipeline options

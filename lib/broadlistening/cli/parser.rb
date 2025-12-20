@@ -54,6 +54,10 @@ module Broadlistening
             options.input_dir = dir
           end
 
+          opts.on("-i", "--input FILE", "Input file path (CSV or JSON) - overrides config") do |file|
+            options.input_file = file
+          end
+
           opts.on("-h", "--help", "Show this help message") do
             puts opts
             exit 0
