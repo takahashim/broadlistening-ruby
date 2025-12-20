@@ -71,6 +71,10 @@ module Broadlistening
         puts "  #{step.step}: #{status} (#{step.reason})"
 
         if @options.verbose && step.run?
+          files = planner.extract_file_info(step.step)
+          files[:input].each { |f| puts "    input: #{f}" } if files[:input]&.any?
+          files[:output].each { |f| puts "    output: #{f}" } if files[:output]&.any?
+
           params = planner.extract_current_params(step.step)
           params.each do |key, value|
             display_value = value.is_a?(String) && value.length > 50 ? "#{value[0..47]}..." : value
@@ -123,10 +127,17 @@ module Broadlistening
     def setup_progress_output
       ActiveSupport::Notifications.subscribe("step.start.broadlistening") do |*, payload|
         puts "Running step: #{payload[:step]}"
-        if @options.verbose && payload[:params]
-          payload[:params].each do |key, value|
-            display_value = value.is_a?(String) && value.length > 50 ? "#{value[0..47]}..." : value
-            puts "  #{key}: #{display_value}"
+        if @options.verbose
+          if payload[:files]
+            files = payload[:files]
+            files[:input].each { |f| puts "  input: #{f}" } if files[:input]&.any?
+            files[:output].each { |f| puts "  output: #{f}" } if files[:output]&.any?
+          end
+          if payload[:params]
+            payload[:params].each do |key, value|
+              display_value = value.is_a?(String) && value.length > 50 ? "#{value[0..47]}..." : value
+              puts "  #{key}: #{display_value}"
+            end
           end
         end
       end

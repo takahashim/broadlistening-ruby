@@ -27,7 +27,6 @@ module Broadlistening
           plan << PlanStep.new(step: step_name, run: false, reason: "before --from step")
         else
           run, reason = decide_step(spec, plan, force: force, only: only)
-          # from_stepで指定されたステップは強制実行
           if from_step && from_index && idx == from_index
             run = true
             reason = "resuming from --from #{from_step}"
@@ -60,32 +59,54 @@ module Broadlistening
       end
     end
 
+    def extract_file_info(step_name)
+      spec = spec_loader.find(step_name)
+      input_files = []
+      output_files = []
+
+      if spec && spec[:dependencies][:steps].any?
+        spec[:dependencies][:steps].each do |dep_step|
+          dep_output = Context::OUTPUT_FILES[dep_step]
+          case dep_output
+          when Hash
+            dep_output.each_value { |f| input_files << (output_dir / f).to_s }
+          when String
+            input_files << (output_dir / dep_output).to_s
+          end
+        end
+      end
+
+      step_output = Context::OUTPUT_FILES[step_name]
+      case step_output
+      when Hash
+        step_output.each_value { |f| output_files << (output_dir / f).to_s }
+      when String
+        output_files << (output_dir / step_output).to_s
+      end
+
+      { input: input_files, output: output_files }
+    end
+
     private
 
     def decide_step(spec, plan, force:, only:)
       step_name = spec[:step]
 
-      # 強制実行
       return [ true, "forced with -f" ] if force
 
-      # 特定ステップのみ実行
       if only
         return [ true, "forced this step with -o" ] if only.to_sym == step_name
 
         return [ false, "forced another step with -o" ]
-
       end
 
-      # 前回実行記録の確認
       prev_job = find_previous_job(step_name)
       return [ true, "no trace of previous run" ] unless prev_job
 
-      # 出力ファイルの存在確認
       unless output_files_exist?(spec[:step])
         return [ true, "previous output not found" ]
       end
 
-      # 依存ステップの確認
       deps = spec[:dependencies][:steps]
       changing_deps = plan.select { |p| deps.include?(p.step) && p.run? }
       if changing_deps.any?
@@ -93,11 +114,9 @@ module Broadlistening
         return [ true, "dependent steps will re-run: #{dep_names}" ]
       end
 
-      # パラメータ変更の確認
       changed_params = detect_param_changes(spec, prev_job)
       return [ true, "parameters changed: #{changed_params.join(', ')}" ] if changed_params.any?
 
-      # 変更なし - スキップ
       [ false, "nothing changed" ]
     end
 
@@ -130,7 +149,6 @@ module Broadlistening
         current_value = current_params[param]
         prev_value = prev_params[param]
 
-        # プロンプトなど長い文字列はハッシュ化して比較
         if current_value.is_a?(String) && current_value.length > LONG_STRING_THRESHOLD
           Digest::SHA256.hexdigest(current_value) != prev_value
         else

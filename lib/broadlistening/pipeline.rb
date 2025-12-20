@@ -104,7 +104,8 @@ module Broadlistening
 
       steps = @spec_loader.steps
       params = planner.extract_current_params(step_name)
-      payload = { step: step_name, step_index: index, step_total: steps.size, params: params }
+      file_info = planner.extract_file_info(step_name)
+      payload = { step: step_name, step_index: index, step_total: steps.size, params: params, files: file_info }
 
       # Notify step start before execution
       instrument("step.start.broadlistening", payload)
