@@ -15,13 +15,25 @@ module Broadlistening
       @all_completed_jobs = status.all_completed_jobs
     end
 
-    def create_plan(force: false, only: nil)
+    def create_plan(force: false, only: nil, from_step: nil)
       plan = []
+      steps = spec_loader.steps
+      from_index = from_step ? steps.index(from_step.to_sym) : nil
 
-      spec_loader.specs.each do |spec|
+      spec_loader.specs.each_with_index do |spec, idx|
         step_name = spec[:step]
-        run, reason = decide_step(spec, plan, force: force, only: only)
-        plan << PlanStep.new(step: step_name, run: run, reason: reason)
+
+        if from_step && from_index && idx < from_index
+          plan << PlanStep.new(step: step_name, run: false, reason: "before --from step")
+        else
+          run, reason = decide_step(spec, plan, force: force, only: only)
+          # from_stepで指定されたステップは強制実行
+          if from_step && from_index && idx == from_index
+            run = true
+            reason = "resuming from --from #{from_step}"
+          end
+          plan << PlanStep.new(step: step_name, run: run, reason: reason)
+        end
       end
 
       plan

@@ -312,6 +312,66 @@ RSpec.describe Broadlistening::Planner do
       end
     end
 
+    context 'when from_step is specified' do
+      let(:completed_jobs_data) do
+        spec_loader.steps.map do |step|
+          params = described_class.new(
+            config: config,
+            status: status,
+            output_dir: output_dir,
+            spec_loader: spec_loader
+          ).extract_current_params(step)
+          serialized_params = params.transform_values do |v|
+            v.is_a?(String) && v.length > 100 ? Digest::SHA256.hexdigest(v) : v
+          end
+          { step: step.to_s, completed: '2024-01-01T00:00:00Z', duration: 1.0, params: serialized_params, token_usage: 0 }
+        end
+      end
+
+      before do
+        FileUtils.mkdir_p(output_dir)
+        File.write(File.join(output_dir, 'status.json'), {
+          status: 'completed',
+          completed_jobs: completed_jobs_data
+        }.to_json)
+        create_output_files_for_planner_test(output_dir)
+      end
+
+      let(:fresh_status) { Broadlistening::Status.new(output_dir) }
+      let(:planner_for_test) do
+        described_class.new(
+          config: config,
+          status: fresh_status,
+          output_dir: output_dir,
+          spec_loader: spec_loader
+        )
+      end
+
+      it 'skips steps before from_step' do
+        plan = planner_for_test.create_plan(from_step: :clustering)
+        extraction_plan = plan.find { |p| p.step == :extraction }
+        embedding_plan = plan.find { |p| p.step == :embedding }
+        expect(extraction_plan.run?).to be false
+        expect(embedding_plan.run?).to be false
+        expect(extraction_plan.reason).to eq('before --from step')
+        expect(embedding_plan.reason).to eq('before --from step')
+      end
+
+      it 'runs the from_step with resuming reason' do
+        plan = planner_for_test.create_plan(from_step: :clustering)
+        clustering_plan = plan.find { |p| p.step == :clustering }
+        expect(clustering_plan.run?).to be true
+        expect(clustering_plan.reason).to eq('resuming from --from clustering')
+      end
+
+      it 'runs steps after from_step based on normal logic' do
+        plan = planner_for_test.create_plan(from_step: :clustering)
+        initial_labelling_plan = plan.find { |p| p.step == :initial_labelling }
+        expect(initial_labelling_plan.run?).to be true
+        expect(initial_labelling_plan.reason).to include('dependent steps will re-run')
+      end
+    end
+
     context 'when parameter changed' do
       let(:completed_jobs_data) do
         [

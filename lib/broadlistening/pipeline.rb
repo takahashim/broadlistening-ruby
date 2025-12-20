@@ -34,15 +34,26 @@ module Broadlistening
     # @param output_dir [String] Directory for output files and status tracking
     # @param force [Boolean] Force re-run all steps
     # @param only [Symbol, nil] Run only the specified step
+    # @param from_step [Symbol, nil] Resume from the specified step
+    # @param input_dir [String, nil] Directory containing input files for resuming
     # @return [Hash] The result of the pipeline
-    def run(comments, output_dir:, force: false, only: nil)
+    def run(comments, output_dir:, force: false, only: nil, from_step: nil, input_dir: nil)
       output_path = Pathname.new(output_dir)
       status = Status.new(output_path)
 
       raise Error, "Pipeline is locked. Another process may be running." if status.locked?
 
-      context = Context.load_from_dir(output_path)
-      context.output_dir = output_path
+      # input_dirが指定されている場合、そこからコンテキストを読み込む
+      if input_dir
+        input_path = Pathname.new(input_dir)
+        context = Context.load_from_dir(input_path)
+        context.output_dir = output_path
+        # 必要なファイルをoutput_dirにコピー
+        copy_required_files(input_path, output_path, from_step)
+      else
+        context = Context.load_from_dir(output_path)
+        context.output_dir = output_path
+      end
 
       # Normalize comments if not already loaded
       context.comments = normalize_comments(comments) if context.comments.empty?
@@ -53,7 +64,7 @@ module Broadlistening
         output_dir: output_path,
         spec_loader: @spec_loader
       )
-      plan = planner.create_plan(force: force, only: only)
+      plan = planner.create_plan(force: force, only: only, from_step: from_step)
 
       status.start_pipeline(plan)
 
@@ -129,6 +140,28 @@ module Broadlistening
 
     def step_class(name)
       Broadlistening::Steps.const_get(name.to_s.camelize)
+    end
+
+    def copy_required_files(input_path, output_path, from_step)
+      steps = @spec_loader.steps
+      from_index = steps.index(from_step.to_sym)
+      return unless from_index
+
+      # from_stepより前のステップの出力ファイルをコピー
+      steps[0...from_index].each do |step|
+        file_config = Context::OUTPUT_FILES[step]
+        files = case file_config
+        when Hash then file_config.values
+        when String then [ file_config ]
+        else []
+        end
+
+        files.each do |filename|
+          src = input_path / filename
+          dst = output_path / filename
+          FileUtils.cp(src, dst) if src.exist? && !dst.exist?
+        end
+      end
     end
   end
 end

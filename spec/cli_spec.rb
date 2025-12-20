@@ -76,6 +76,20 @@ RSpec.describe Broadlistening::CLI do
       expect(cli.options[:skip_interaction]).to be true
     end
 
+    it "parses --from option" do
+      cli = described_class.new([ config_file.path, "--from", "embedding" ])
+      cli.send(:parse_options)
+
+      expect(cli.options[:from_step]).to eq(:embedding)
+    end
+
+    it "parses --input-dir option" do
+      cli = described_class.new([ config_file.path, "--input-dir", "/path/to/input" ])
+      cli.send(:parse_options)
+
+      expect(cli.options[:input_dir]).to eq("/path/to/input")
+    end
+
     it "exits with help message on -h" do
       cli = described_class.new([ "-h" ])
 
@@ -117,6 +131,42 @@ RSpec.describe Broadlistening::CLI do
       cli.send(:parse_options)
 
       expect { cli.send(:validate_config_path) }.not_to raise_error
+    end
+  end
+
+  describe "#validate_resume_options" do
+    it "exits with error when --from is used without --input-dir" do
+      cli = described_class.new([ config_file.path, "--from", "embedding" ])
+      cli.send(:parse_options)
+
+      expect { cli.send(:validate_resume_options) }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end
+
+    it "exits with error when --input-dir is used without --from" do
+      cli = described_class.new([ config_file.path, "--input-dir", "/path/to/input" ])
+      cli.send(:parse_options)
+
+      expect { cli.send(:validate_resume_options) }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end
+
+    it "exits with error when --from and --only are used together" do
+      cli = described_class.new([ config_file.path, "--from", "embedding", "--input-dir", "/tmp", "--only", "clustering" ])
+      cli.send(:parse_options)
+
+      expect { cli.send(:validate_resume_options) }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end
+
+    it "passes when neither --from nor --input-dir is specified" do
+      cli = described_class.new([ config_file.path ])
+      cli.send(:parse_options)
+
+      expect { cli.send(:validate_resume_options) }.not_to raise_error
     end
   end
 
