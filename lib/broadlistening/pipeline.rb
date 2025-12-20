@@ -41,7 +41,10 @@ module Broadlistening
       output_path = Pathname.new(output_dir)
       status = Status.new(output_path)
 
-      raise Error, "Pipeline is locked. Another process may be running." if status.locked?
+      if status.locked?
+        status_file = output_path / "status.json"
+        raise Error, "Pipeline is locked. Another process may be running.\nTo unlock, delete: #{status_file}"
+      end
 
       # input_dirが指定されている場合、そこからコンテキストを読み込む
       if input_dir
