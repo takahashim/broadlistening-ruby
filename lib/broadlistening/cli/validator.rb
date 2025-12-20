@@ -8,7 +8,7 @@ module Broadlistening
         def validate!(options)
           validate_config_path!(options)
           validate_resume_options!(options)
-          validate_input_files!(options) if options.from_step
+          validate_input_files!(options) if options.from_step && options.input_dir
         end
 
         def validate_config!(config)
@@ -33,11 +33,6 @@ module Broadlistening
         end
 
         def validate_resume_options!(options)
-          if options.from_step_without_input_dir?
-            $stderr.puts "Error: --input-dir is required when using --from"
-            exit 1
-          end
-
           if options.input_dir_without_from_step?
             $stderr.puts "Error: --from is required when using --input-dir"
             exit 1

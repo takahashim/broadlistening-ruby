@@ -45,10 +45,28 @@ RSpec.describe Broadlistening::Cli::Parser do
       expect(options.only).to eq(:embedding)
     end
 
-    it "parses --skip-interaction option" do
-      options = described_class.parse([ config_file.path, "--skip-interaction" ])
+    it "parses -n/--dry-run option" do
+      options = described_class.parse([ config_file.path, "-n" ])
 
-      expect(options.skip_interaction).to be true
+      expect(options.dry_run).to be true
+    end
+
+    it "parses --dry-run long option" do
+      options = described_class.parse([ config_file.path, "--dry-run" ])
+
+      expect(options.dry_run).to be true
+    end
+
+    it "parses -V/--verbose option" do
+      options = described_class.parse([ config_file.path, "-V" ])
+
+      expect(options.verbose).to be true
+    end
+
+    it "parses --verbose long option" do
+      options = described_class.parse([ config_file.path, "--verbose" ])
+
+      expect(options.verbose).to be true
     end
 
     it "parses --from option" do
@@ -86,7 +104,8 @@ RSpec.describe Broadlistening::Cli::Parser do
 
       expect(options.force).to be false
       expect(options.only).to be_nil
-      expect(options.skip_interaction).to be false
+      expect(options.dry_run).to be false
+      expect(options.verbose).to be false
       expect(options.from_step).to be_nil
       expect(options.input_dir).to be_nil
     end

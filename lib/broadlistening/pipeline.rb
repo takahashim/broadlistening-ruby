@@ -100,7 +100,8 @@ module Broadlistening
       token_usage_before = context.token_usage.dup
 
       steps = @spec_loader.steps
-      payload = { step: step_name, step_index: index, step_total: steps.size }
+      params = planner.extract_current_params(step_name)
+      payload = { step: step_name, step_index: index, step_total: steps.size, params: params }
 
       instrument("step.broadlistening", payload) do
         step = step_class(step_name).new(@config, context)
@@ -112,7 +113,6 @@ module Broadlistening
         input: context.token_usage.input - token_usage_before.input,
         output: context.token_usage.output - token_usage_before.output
       )
-      params = planner.extract_current_params(step_name)
       status.complete_step(step_name, params: params, duration: duration, token_usage: step_token_usage)
 
       context.save_step(step_name, output_path)

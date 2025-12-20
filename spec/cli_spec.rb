@@ -35,7 +35,7 @@ RSpec.describe Broadlistening::Cli do
 
   describe "#options" do
     it "returns Options instance after parsing" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
 
       # Trigger parsing by calling a method that uses options
       mock_pipeline = instance_double(Broadlistening::Pipeline)
@@ -46,13 +46,12 @@ RSpec.describe Broadlistening::Cli do
 
       expect(cli.options).to be_a(Broadlistening::Cli::Options)
       expect(cli.options.config_path).to eq(config_file.path)
-      expect(cli.options.skip_interaction).to be true
     end
   end
 
   describe "#determine_output_dir" do
     it "generates output directory from config filename" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
 
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
@@ -67,7 +66,7 @@ RSpec.describe Broadlistening::Cli do
     end
 
     it "strips extension from config filename" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
 
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
@@ -82,7 +81,7 @@ RSpec.describe Broadlistening::Cli do
 
   describe "#load_comments" do
     let(:cli) do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
       allow(mock_pipeline).to receive(:run).and_return({ result: {} })
@@ -118,20 +117,9 @@ RSpec.describe Broadlistening::Cli do
     end
   end
 
-  describe "#confirm_execution" do
-    it "returns true when user presses enter" do
-      cli = described_class.new([ config_file.path ])
-      allow($stdin).to receive(:gets).and_return("\n")
-
-      result = cli.send(:confirm_execution)
-
-      expect(result).to be true
-    end
-  end
-
   describe "#run" do
     it "runs pipeline when all validations pass" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
 
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
@@ -142,7 +130,7 @@ RSpec.describe Broadlistening::Cli do
     end
 
     it "creates output directory matching config filename" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
 
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
@@ -158,7 +146,7 @@ RSpec.describe Broadlistening::Cli do
     end
 
     it "exits with error on Broadlistening::Error" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
 
       allow(Broadlistening::Pipeline).to receive(:new).and_raise(
         Broadlistening::ConfigurationError, "Test error"
@@ -178,7 +166,7 @@ RSpec.describe Broadlistening::Cli do
       }.to_json)
       no_question_file.close
 
-      cli = described_class.new([ no_question_file.path, "--skip-interaction" ])
+      cli = described_class.new([ no_question_file.path ])
 
       expect { cli.run }.to raise_error(SystemExit) do |error|
         expect(error.status).to eq(1)
@@ -188,7 +176,7 @@ RSpec.describe Broadlistening::Cli do
     end
 
     it "passes options to pipeline" do
-      cli = described_class.new([ config_file.path, "--skip-interaction", "-f", "-o", "extraction" ])
+      cli = described_class.new([ config_file.path, "-f", "-o", "extraction" ])
 
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
@@ -206,10 +194,10 @@ RSpec.describe Broadlistening::Cli do
     end
   end
 
-  describe "Python CLI compatibility" do
-    it "accepts same options as Python version" do
+  describe "CLI options" do
+    it "accepts standard CLI options" do
       # -f, --force
-      cli_f = described_class.new([ config_file.path, "-f", "--skip-interaction" ])
+      cli_f = described_class.new([ config_file.path, "-f" ])
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
       allow(mock_pipeline).to receive(:run).and_return({ result: {} })
@@ -217,18 +205,23 @@ RSpec.describe Broadlistening::Cli do
       expect(cli_f.options.force).to be true
 
       # -o, --only
-      cli_o = described_class.new([ config_file.path, "-o", "extraction", "--skip-interaction" ])
+      cli_o = described_class.new([ config_file.path, "-o", "extraction" ])
       cli_o.run
       expect(cli_o.options.only).to eq(:extraction)
 
-      # --skip-interaction
-      cli_skip = described_class.new([ config_file.path, "--skip-interaction" ])
-      cli_skip.run
-      expect(cli_skip.options.skip_interaction).to be true
+      # --dry-run
+      cli_dry = described_class.new([ config_file.path, "--dry-run" ])
+      expect { cli_dry.run }.to raise_error(SystemExit) { |e| expect(e.status).to eq(0) }
+      expect(cli_dry.options.dry_run).to be true
+
+      # --verbose
+      cli_verbose = described_class.new([ config_file.path, "--verbose" ])
+      cli_verbose.run
+      expect(cli_verbose.options.verbose).to be true
     end
 
     it "validates same required fields as Python version" do
-      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      cli = described_class.new([ config_file.path ])
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
       allow(mock_pipeline).to receive(:run).and_return({ result: {} })

@@ -4,13 +4,14 @@ module Broadlistening
   class Cli
     # Options for the broadlistening CLI
     class Options
-      attr_accessor :config_path, :force, :only, :skip_interaction,
+      attr_accessor :config_path, :force, :only, :dry_run, :verbose,
                     :from_step, :input_dir
 
       def initialize
         @force = false
         @only = nil
-        @skip_interaction = false
+        @dry_run = false
+        @verbose = false
         @from_step = nil
         @input_dir = nil
       end
@@ -28,11 +29,6 @@ module Broadlistening
       # Check if resume mode is active
       def resume_mode?
         !!(from_step || input_dir)
-      end
-
-      # Validation helper: --from without --input-dir
-      def from_step_without_input_dir?
-        !!(from_step && !input_dir)
       end
 
       # Validation helper: --input-dir without --from

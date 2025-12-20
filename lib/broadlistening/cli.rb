@@ -23,9 +23,9 @@ module Broadlistening
       output_dir = determine_output_dir
       ensure_output_dir(output_dir)
 
-      unless @options.skip_interaction
+      if @options.dry_run
         show_plan(config, output_dir)
-        confirm_execution || exit(0)
+        exit 0
       end
 
       execute_pipeline(config, output_dir)
@@ -57,7 +57,7 @@ module Broadlistening
     end
 
     def show_plan(config, output_dir)
-      puts "So, here is what I am planning to run:"
+      puts "Execution plan:"
 
       planner = create_planner(config, output_dir)
       plan = planner.create_plan(
@@ -69,18 +69,17 @@ module Broadlistening
       plan.each do |step|
         status = step.run? ? "RUN" : "SKIP"
         puts "  #{step.step}: #{status} (#{step.reason})"
+
+        if @options.verbose && step.run?
+          params = planner.extract_current_params(step.step)
+          params.each do |key, value|
+            display_value = value.is_a?(String) && value.length > 50 ? "#{value[0..47]}..." : value
+            puts "    #{key}: #{display_value}"
+          end
+        end
       end
 
       puts ""
-    end
-
-    def confirm_execution
-      print "Looks good? Press enter to continue or Ctrl+C to abort."
-      $stdin.gets
-      true
-    rescue Interrupt
-      puts ""
-      false
     end
 
     def create_planner(config, output_dir)
@@ -124,6 +123,12 @@ module Broadlistening
     def setup_progress_output
       ActiveSupport::Notifications.subscribe("step.broadlistening") do |*, payload|
         puts "Running step: #{payload[:step]}"
+        if @options.verbose && payload[:params]
+          payload[:params].each do |key, value|
+            display_value = value.is_a?(String) && value.length > 50 ? "#{value[0..47]}..." : value
+            puts "  #{key}: #{display_value}"
+          end
+        end
       end
 
       ActiveSupport::Notifications.subscribe("step.skip.broadlistening") do |*, payload|
@@ -136,6 +141,18 @@ module Broadlistening
         total = payload[:total]
         print "\r  #{step}: #{current}/#{total}"
         puts "" if current == total
+      end
+
+      setup_verbose_output if @options.verbose
+    end
+
+    def setup_verbose_output
+      ActiveSupport::Notifications.subscribe("llm.broadlistening") do |*, payload|
+        usage = payload[:token_usage]
+        duration = payload[:duration_ms]
+        if usage
+          puts "  LLM: #{usage.input} in / #{usage.output} out tokens (#{duration}ms)"
+        end
       end
     end
   end

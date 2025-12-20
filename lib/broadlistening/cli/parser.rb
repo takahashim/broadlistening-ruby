@@ -38,15 +38,19 @@ module Broadlistening
             options.only = step.to_sym
           end
 
-          opts.on("--skip-interaction", "Skip the interactive confirmation prompt and run pipeline immediately") do
-            options.skip_interaction = true
+          opts.on("-n", "--dry-run", "Show what would be executed without actually running the pipeline") do
+            options.dry_run = true
           end
 
-          opts.on("--from STEP", "Resume pipeline from specified step (requires --input-dir)") do |step|
+          opts.on("-V", "--verbose", "Show detailed output including step parameters and LLM usage") do
+            options.verbose = true
+          end
+
+          opts.on("--from STEP", "Resume pipeline from specified step") do |step|
             options.from_step = step.to_sym
           end
 
-          opts.on("--input-dir DIR", "Directory containing input files for resuming (requires --from)") do |dir|
+          opts.on("--input-dir DIR", "Use different input directory for resuming (requires --from)") do |dir|
             options.input_dir = dir
           end
 

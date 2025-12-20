@@ -8,7 +8,8 @@ RSpec.describe Broadlistening::Cli::Options do
       expect(options.config_path).to be_nil
       expect(options.force).to be false
       expect(options.only).to be_nil
-      expect(options.skip_interaction).to be false
+      expect(options.dry_run).to be false
+      expect(options.verbose).to be false
       expect(options.from_step).to be_nil
       expect(options.input_dir).to be_nil
     end
@@ -53,23 +54,6 @@ RSpec.describe Broadlistening::Cli::Options do
       options = described_class.new
 
       expect(options.resume_mode?).to be false
-    end
-  end
-
-  describe "#from_step_without_input_dir?" do
-    it "returns true when from_step is set but input_dir is not" do
-      options = described_class.new
-      options.from_step = :embedding
-
-      expect(options.from_step_without_input_dir?).to be true
-    end
-
-    it "returns false when both are set" do
-      options = described_class.new
-      options.from_step = :embedding
-      options.input_dir = "/tmp/input"
-
-      expect(options.from_step_without_input_dir?).to be false
     end
   end
 

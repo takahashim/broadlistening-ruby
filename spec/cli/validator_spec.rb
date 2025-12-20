@@ -55,14 +55,12 @@ RSpec.describe Broadlistening::Cli::Validator do
     end
 
     context "resume options validation" do
-      it "exits when --from is used without --input-dir" do
+      it "passes when --from is used without --input-dir (uses output_dir)" do
         options = Broadlistening::Cli::Options.new
         options.config_path = config_file.path
         options.from_step = :embedding
 
-        expect { described_class.validate!(options) }.to raise_error(SystemExit) do |error|
-          expect(error.status).to eq(1)
-        end
+        expect { described_class.validate!(options) }.not_to raise_error
       end
 
       it "exits when --input-dir is used without --from" do

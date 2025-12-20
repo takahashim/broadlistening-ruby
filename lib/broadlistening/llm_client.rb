@@ -29,12 +29,19 @@ module Broadlistening
 
     def chat(system:, user:, json_mode: false, json_schema: nil)
       params = build_chat_params(system, user, json_mode, json_schema)
+
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       response = with_retry { @client.chat(parameters: params) }
+      duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round
+
       validate_response!(response)
+
+      token_usage = TokenUsage.from_response(response)
+      notify_llm_call(token_usage: token_usage, duration_ms: duration_ms)
 
       ChatResult.new(
         content: response.dig("choices", 0, "message", "content"),
-        token_usage: TokenUsage.from_response(response)
+        token_usage: token_usage
       )
     end
 
@@ -125,6 +132,13 @@ module Broadlistening
       error.message.include?("429") ||
         error.message.downcase.include?("rate limit") ||
         error.message.downcase.include?("too many requests")
+    end
+
+    def notify_llm_call(token_usage:, duration_ms:)
+      ActiveSupport::Notifications.instrument("llm.broadlistening", {
+        token_usage: token_usage,
+        duration_ms: duration_ms
+      })
     end
   end
 end
