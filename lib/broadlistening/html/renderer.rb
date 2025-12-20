@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "erb"
+require "erubi"
 require "json"
 
 module Broadlistening
@@ -103,8 +103,8 @@ module Broadlistening
       #
       # @return [String] The rendered HTML
       def render
-        template = ERB.new(File.read(@template_path), trim_mode: "-")
-        template.result(binding)
+        template = Erubi::Engine.new(File.read(@template_path), escape: true)
+        eval(template.src, binding, @template_path) # rubocop:disable Security/Eval
       end
 
       # Save the rendered HTML to a file
@@ -162,6 +162,40 @@ module Broadlistening
           }
         end
         JSON.generate(meta)
+      end
+
+      # Generate JSON for all clusters (for subclusters navigation)
+      #
+      # @return [String] JSON object of all cluster data
+      def all_clusters_json
+        clusters = result.clusters.map do |c|
+          {
+            id: c.id,
+            level: c.level,
+            label: c.label,
+            takeaway: c.takeaway,
+            value: c.value,
+            parent: c.parent,
+            color: cluster_color(c.id)
+          }
+        end
+        JSON.generate(clusters)
+      end
+
+      # Generate JSON for all points with full cluster_ids
+      #
+      # @return [String] JSON array of point data with all cluster_ids
+      def full_points_json
+        points = result.arguments.map do |arg|
+          {
+            arg_id: arg.arg_id,
+            argument: arg.argument,
+            x: arg.x,
+            y: arg.y,
+            cluster_ids: arg.cluster_ids
+          }
+        end
+        JSON.generate(points)
       end
 
       private

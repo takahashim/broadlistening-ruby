@@ -103,6 +103,10 @@
       transition: box-shadow 0.2s;
     }
 
+    .cluster-card {
+      cursor: pointer;
+    }
+
     .cluster-card:hover {
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
@@ -112,6 +116,66 @@
       align-items: center;
       gap: 0.5rem;
       margin-bottom: 0.75rem;
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      margin-bottom: 1rem;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--primary-dark);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .back-button:hover {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .back-button svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .subclusters-section {
+      display: none;
+    }
+
+    .subclusters-section.active {
+      display: block;
+    }
+
+    .main-clusters-section.hidden {
+      display: none;
+    }
+
+    .parent-cluster-info {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--primary);
+    }
+
+    .parent-cluster-info h2 {
+      margin-bottom: 0.25rem;
+    }
+
+    .parent-cluster-info .cluster-count {
+      margin-bottom: 0.5rem;
+    }
+
+    .subcluster-card {
+      background-color: var(--bg-color);
+      border: 1px solid var(--border-color);
     }
 
     .cluster-count {
@@ -166,10 +230,10 @@
       <p><%= result.overview %></p>
     </section>
 
-    <section class="section">
+    <section class="section main-clusters-section" id="main-clusters">
       <div class="clusters-grid">
         <%- level1_clusters.each do |cluster| -%>
-        <div class="cluster-card" style="border-left-color: <%= cluster_color(cluster.id) %>;">
+        <div class="cluster-card" data-cluster-id="<%= cluster.id %>" style="border-left-color: <%= cluster_color(cluster.id) %>;">
           <div class="cluster-header">
             <h2><%= cluster.label %></h2>
           </div>
@@ -185,131 +249,410 @@
         <%- end -%>
       </div>
     </section>
+
+    <section class="section subclusters-section" id="subclusters">
+      <button class="back-button" id="back-button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5"></path>
+          <path d="M12 19l-7-7 7-7"></path>
+        </svg>
+        大分類一覧に戻る
+      </button>
+      <div class="parent-cluster-info" id="parent-cluster-info">
+        <h2 id="parent-cluster-label"></h2>
+        <p class="cluster-count" id="parent-cluster-count"></p>
+        <p id="parent-cluster-takeaway"></p>
+      </div>
+      <div class="clusters-grid" id="subclusters-grid">
+      </div>
+    </section>
   </main>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var plotEl = document.getElementById('scatter-plot');
+  <script type="application/json" id="full-points-data"><%= full_points_json %></script>
+  <script type="application/json" id="all-clusters-data"><%= all_clusters_json %></script>
 
-      // Check if Plotly loaded
-      if (typeof Plotly === 'undefined') {
-        plotEl.innerHTML =
-          '<div style="padding: 2rem; text-align: center; color: #718096;">' +
-          '<p>グラフを表示できません。</p>' +
-          '<p style="font-size: 0.875rem;">Plotly.jsの読み込みに失敗しました。<br>' +
-          'ネットワーク接続を確認してください。</p>' +
-          '</div>';
-        return;
+  <script type="module">
+    // ===================
+    // Constants
+    // ===================
+    const CONFIG = {
+      colors: [
+        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+      ],
+      inactiveColor: 'rgba(200, 200, 200, 0.2)',
+      labelMaxLength: 16,
+      boundsPadding: 0.1,
+      marker: { size: 8, opacity: 0.7 },
+      annotation: { fontSize: 11, borderpad: 4, opacity: 0.9 }
+    };
+
+    const ICONS = {
+      comment: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"></path>
+        <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"></path>
+      </svg>`
+    };
+
+    // ===================
+    // DOM Elements (cached)
+    // ===================
+    const elements = {
+      plot: null,
+      mainClusters: null,
+      subclusters: null,
+      subclusterGrid: null,
+      parentLabel: null,
+      parentCount: null,
+      parentTakeaway: null,
+      parentInfo: null,
+      backButton: null
+    };
+
+    function cacheElements() {
+      elements.plot = document.getElementById('scatter-plot');
+      elements.mainClusters = document.getElementById('main-clusters');
+      elements.subclusters = document.getElementById('subclusters');
+      elements.subclusterGrid = document.getElementById('subclusters-grid');
+      elements.parentLabel = document.getElementById('parent-cluster-label');
+      elements.parentCount = document.getElementById('parent-cluster-count');
+      elements.parentTakeaway = document.getElementById('parent-cluster-takeaway');
+      elements.parentInfo = document.getElementById('parent-cluster-info');
+      elements.backButton = document.getElementById('back-button');
+    }
+
+    // ===================
+    // Utility Functions
+    // ===================
+    function showError(element, message, detail = '') {
+      element.innerHTML = `
+        <div style="padding: 2rem; text-align: center; color: #718096;">
+          <p>${message}</p>
+          ${detail ? `<p style="font-size: 0.875rem;">${detail}</p>` : ''}
+        </div>`;
+    }
+
+    function truncateLabel(label) {
+      return label.length > CONFIG.labelMaxLength
+        ? label.slice(0, CONFIG.labelMaxLength) + '...'
+        : label;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===================
+    // Cluster Data Manager
+    // ===================
+    function createClusterManager(allClusters, fullPoints) {
+      const clusterById = Object.fromEntries(
+        allClusters.map(c => [c.id, c])
+      );
+
+      return {
+        getById: (id) => clusterById[id],
+
+        getChildren: (parentId) =>
+          allClusters
+            .filter(c => c.parent === parentId)
+            .sort((a, b) => b.value - a.value),
+
+        getColor: (clusterId) => {
+          if (!clusterId || !clusterId.includes('_')) {
+            return CONFIG.colors[0];
+          }
+          const index = parseInt(clusterId.split('_').pop(), 10);
+          return CONFIG.colors[index % CONFIG.colors.length];
+        },
+
+        getLevel1ClusterId: (point) =>
+          point.cluster_ids[1] || point.cluster_ids[0],
+
+        groupPointsByCluster: (points, getClusterIdFn) => {
+          const groups = {};
+          for (const point of points) {
+            const cid = getClusterIdFn(point);
+            if (!cid) continue;
+            (groups[cid] = groups[cid] || []).push(point);
+          }
+          return groups;
+        }
+      };
+    }
+
+    // ===================
+    // Annotation Builder
+    // ===================
+    function createAnnotationBuilder(clusterManager) {
+      function calculateCentroid(points) {
+        const sumX = points.reduce((s, p) => s + p.x, 0);
+        const sumY = points.reduce((s, p) => s + p.y, 0);
+        return { x: sumX / points.length, y: sumY / points.length };
       }
 
-      var points = <%= points_json %>;
-      var clusterMeta = <%= cluster_meta_json %>;
-
-      // Check if we have data
-      if (!points || points.length === 0) {
-        plotEl.innerHTML =
-          '<div style="padding: 2rem; text-align: center; color: #718096;">' +
-          '<p>表示するデータがありません。</p>' +
-          '</div>';
-        return;
+      function createAnnotation(cluster, centroid, color) {
+        return {
+          x: centroid.x,
+          y: centroid.y,
+          text: truncateLabel(cluster.label),
+          showarrow: false,
+          font: { size: CONFIG.annotation.fontSize, color: '#ffffff' },
+          bgcolor: color,
+          borderpad: CONFIG.annotation.borderpad,
+          opacity: CONFIG.annotation.opacity
+        };
       }
 
-      var colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-                    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
+      return {
+        buildForLevel1: (fullPoints) => {
+          const groups = clusterManager.groupPointsByCluster(
+            fullPoints,
+            p => clusterManager.getLevel1ClusterId(p)
+          );
 
-      function getColor(point) {
-        var clusterId = point.cluster_id;
-        if (!clusterId || clusterId.indexOf('_') === -1) return colors[0];
-        var index = parseInt(clusterId.split('_')[1], 10);
-        return colors[index % colors.length];
-      }
+          return Object.entries(groups)
+            .map(([cid, points]) => {
+              const cluster = clusterManager.getById(cid);
+              if (!cluster) return null;
+              return createAnnotation(cluster, calculateCentroid(points), cluster.color);
+            })
+            .filter(Boolean);
+        },
 
-      function buildAnnotations() {
-        var clusterPoints = {};
+        buildForSubclusters: (fullPoints, parentClusterId) => {
+          const children = clusterManager.getChildren(parentClusterId);
+          if (children.length === 0) return [];
 
-        points.forEach(function(p) {
-          var cid = p.cluster_id;
-          if (!cid) return;
-          if (!clusterPoints[cid]) clusterPoints[cid] = [];
-          clusterPoints[cid].push(p);
-        });
+          const childLevel = children[0].level;
+          const groups = clusterManager.groupPointsByCluster(
+            fullPoints,
+            p => {
+              if (p.cluster_ids[childLevel - 1] !== parentClusterId) return null;
+              return p.cluster_ids[childLevel];
+            }
+          );
 
-        var annotations = [];
-        Object.keys(clusterPoints).forEach(function(cid) {
-          var pts = clusterPoints[cid];
-          var meta = clusterMeta[cid];
-          if (!meta) return;
+          return Object.entries(groups)
+            .map(([cid, points]) => {
+              const cluster = clusterManager.getById(cid);
+              if (!cluster) return null;
+              return createAnnotation(cluster, calculateCentroid(points), clusterManager.getColor(cid));
+            })
+            .filter(Boolean);
+        }
+      };
+    }
 
-          var avgX = pts.reduce(function(s, p) { return s + p.x; }, 0) / pts.length;
-          var avgY = pts.reduce(function(s, p) { return s + p.y; }, 0) / pts.length;
+    // ===================
+    // Color Calculator
+    // ===================
+    function createColorCalculator(clusterManager) {
+      return {
+        forMainView: (fullPoints) =>
+          fullPoints.map(p => clusterManager.getColor(clusterManager.getLevel1ClusterId(p))),
 
-          annotations.push({
-            x: avgX,
-            y: avgY,
-            text: meta.label.length > 16 ? meta.label.slice(0, 16) + '...' : meta.label,
-            showarrow: false,
-            font: { size: 11, color: '#ffffff' },
-            bgcolor: meta.color,
-            borderpad: 4,
-            opacity: 0.9
+        forSubView: (fullPoints, parentClusterId) => {
+          const children = clusterManager.getChildren(parentClusterId);
+          const childLevel = children.length > 0 ? children[0].level : 2;
+
+          return fullPoints.map(p => {
+            if (p.cluster_ids[childLevel - 1] !== parentClusterId) {
+              return CONFIG.inactiveColor;
+            }
+            return clusterManager.getColor(p.cluster_ids[childLevel]);
           });
-        });
-
-        return annotations;
-      }
-
-      var trace = {
-        x: points.map(function(d) { return d.x; }),
-        y: points.map(function(d) { return d.y; }),
-        mode: 'markers',
-        type: 'scattergl',
-        text: points.map(function(d) { return d.argument; }),
-        customdata: points.map(function(d) { return d.arg_id; }),
-        marker: {
-          size: 8,
-          opacity: 0.7,
-          color: points.map(getColor)
-        },
-        hovertemplate: '%{text}<extra></extra>'
+        }
       };
+    }
 
-      var layout = {
-        showlegend: false,
-        hovermode: 'closest',
-        xaxis: {
-          showgrid: false,
-          zeroline: false,
-          showticklabels: false
-        },
-        yaxis: {
-          showgrid: false,
-          zeroline: false,
-          showticklabels: false
-        },
-        annotations: buildAnnotations(),
-        margin: { l: 20, r: 20, t: 20, b: 20 }
+    // ===================
+    // Bounds Calculator
+    // ===================
+    function calculateBounds(points) {
+      const xs = points.map(p => p.x);
+      const ys = points.map(p => p.y);
+      const [minX, maxX] = [Math.min(...xs), Math.max(...xs)];
+      const [minY, maxY] = [Math.min(...ys), Math.max(...ys)];
+      const padX = (maxX - minX) * CONFIG.boundsPadding;
+      const padY = (maxY - minY) * CONFIG.boundsPadding;
+
+      return {
+        x: [minX - padX, maxX + padX],
+        y: [minY - padY, maxY + padY]
       };
+    }
 
-      var config = {
+    // ===================
+    // Plot Controller
+    // ===================
+    function createPlotController(fullPoints, annotationBuilder, colorCalculator) {
+      const plotConfig = {
         responsive: false,
         displayModeBar: true,
         modeBarButtonsToRemove: ['select2d', 'lasso2d', 'resetScale2d', 'toImage'],
         displaylogo: false
       };
 
-      try {
-        Plotly.newPlot('scatter-plot', [trace], layout, config).then(function() {
-          Plotly.Plots.resize('scatter-plot');
+      const createLayout = (annotations) => ({
+        showlegend: false,
+        hovermode: 'closest',
+        xaxis: { showgrid: false, zeroline: false, showticklabels: false },
+        yaxis: { showgrid: false, zeroline: false, showticklabels: false },
+        annotations,
+        margin: { l: 20, r: 20, t: 20, b: 20 }
+      });
+
+      const createTrace = (colors) => ({
+        x: fullPoints.map(d => d.x),
+        y: fullPoints.map(d => d.y),
+        mode: 'markers',
+        type: 'scattergl',
+        text: fullPoints.map(d => d.argument),
+        customdata: fullPoints.map(d => d.arg_id),
+        marker: { size: CONFIG.marker.size, opacity: CONFIG.marker.opacity, color: colors },
+        hovertemplate: '%{text}<extra></extra>'
+      });
+
+      return {
+        initialize: () => {
+          const colors = colorCalculator.forMainView(fullPoints);
+          const annotations = annotationBuilder.buildForLevel1(fullPoints);
+          return Plotly.newPlot('scatter-plot', [createTrace(colors)], createLayout(annotations), plotConfig)
+            .then(() => Plotly.Plots.resize('scatter-plot'));
+        },
+
+        showMainView: () => {
+          const colors = colorCalculator.forMainView(fullPoints);
+          const annotations = annotationBuilder.buildForLevel1(fullPoints);
+          return Plotly.update('scatter-plot',
+            { 'marker.color': [colors] },
+            { annotations, 'xaxis.autorange': true, 'yaxis.autorange': true }
+          );
+        },
+
+        showSubView: (parentClusterId, childLevel) => {
+          const colors = colorCalculator.forSubView(fullPoints, parentClusterId);
+          const annotations = annotationBuilder.buildForSubclusters(fullPoints, parentClusterId);
+          const relevantPoints = fullPoints.filter(p => p.cluster_ids[childLevel - 1] === parentClusterId);
+          const bounds = calculateBounds(relevantPoints);
+
+          return Plotly.update('scatter-plot',
+            { 'marker.color': [colors] },
+            { annotations, 'xaxis.range': bounds.x, 'yaxis.range': bounds.y }
+          );
+        }
+      };
+    }
+
+    // ===================
+    // UI Controller
+    // ===================
+    function createUIController(clusterManager, plotController) {
+      const renderClusterCard = (cluster) => {
+        const card = document.createElement('div');
+        card.className = 'cluster-card subcluster-card';
+        card.style.borderLeftColor = clusterManager.getColor(cluster.id);
+        const safeValue = String(Number(cluster.value) || 0);
+        card.innerHTML = `
+          <div class="cluster-header"><h2>${escapeHtml(cluster.label)}</h2></div>
+          <p class="cluster-count">${ICONS.comment}${safeValue}件</p>
+          <p class="cluster-takeaway">${escapeHtml(cluster.takeaway)}</p>`;
+        return card;
+      };
+
+      const updateParentInfo = (parent) => {
+        elements.parentLabel.textContent = parent.label;
+        elements.parentCount.innerHTML = ICONS.comment + String(Number(parent.value) || 0) + '件';
+        elements.parentTakeaway.textContent = parent.takeaway;
+        elements.parentInfo.style.borderLeftColor = parent.color;
+      };
+
+      const renderSubclusterCards = (children) => {
+        elements.subclusterGrid.innerHTML = '';
+
+        if (children.length === 0) {
+          elements.subclusterGrid.innerHTML =
+            '<p style="color: var(--text-secondary); padding: 1rem;">このクラスタには小分類がありません。</p>';
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        children.forEach(child => fragment.appendChild(renderClusterCard(child)));
+        elements.subclusterGrid.appendChild(fragment);
+      };
+
+      const toggleSections = (showSub) => {
+        elements.mainClusters.classList.toggle('hidden', showSub);
+        elements.subclusters.classList.toggle('active', showSub);
+      };
+
+      return {
+        showSubclusters: (parentClusterId) => {
+          const parent = clusterManager.getById(parentClusterId);
+          const children = clusterManager.getChildren(parentClusterId);
+          const childLevel = children.length > 0 ? children[0].level : 2;
+
+          updateParentInfo(parent);
+          renderSubclusterCards(children);
+          toggleSections(true);
+          plotController.showSubView(parentClusterId, childLevel);
+        },
+
+        showMainView: () => {
+          toggleSections(false);
+          plotController.showMainView();
+        }
+      };
+    }
+
+    // ===================
+    // Event Handlers
+    // ===================
+    function setupEventListeners(uiController) {
+      document.querySelectorAll('.cluster-card[data-cluster-id]').forEach(card => {
+        card.addEventListener('click', () => {
+          uiController.showSubclusters(card.dataset.clusterId);
         });
-      } catch (e) {
-        console.error('Plotly error:', e);
-        plotEl.innerHTML =
-          '<div style="padding: 2rem; text-align: center; color: #718096;">' +
-          '<p>グラフの描画中にエラーが発生しました。</p>' +
-          '<p style="font-size: 0.875rem;">' + e.message + '</p>' +
-          '</div>';
+      });
+
+      elements.backButton.addEventListener('click', () => uiController.showMainView());
+    }
+
+    // ===================
+    // Main
+    // ===================
+    cacheElements();
+
+    if (typeof Plotly === 'undefined') {
+      showError(
+        elements.plot,
+        'グラフを表示できません。',
+        'Plotly.jsの読み込みに失敗しました。<br>ネットワーク接続を確認してください。'
+      );
+    } else {
+      const fullPoints = JSON.parse(document.getElementById('full-points-data').textContent);
+      const allClusters = JSON.parse(document.getElementById('all-clusters-data').textContent);
+
+      if (!fullPoints || fullPoints.length === 0) {
+        showError(elements.plot, '表示するデータがありません。');
+      } else {
+        const clusterManager = createClusterManager(allClusters, fullPoints);
+        const annotationBuilder = createAnnotationBuilder(clusterManager);
+        const colorCalculator = createColorCalculator(clusterManager);
+        const plotController = createPlotController(fullPoints, annotationBuilder, colorCalculator);
+        const uiController = createUIController(clusterManager, plotController);
+
+        setupEventListeners(uiController);
+
+        plotController.initialize().catch(e => {
+          console.error('Plotly error:', e);
+          showError(elements.plot, 'グラフの描画中にエラーが発生しました。', e.message);
+        });
       }
-    });
+    }
   </script>
 </body>
 </html>

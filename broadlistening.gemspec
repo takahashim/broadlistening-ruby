@@ -42,4 +42,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "umappp", "~> 0.2"
   spec.add_dependency "json_schemer", "~> 2.0"
   spec.add_dependency "retriable", "~> 3.1"
+  spec.add_dependency "erubi", "~> 1.10"
 end
