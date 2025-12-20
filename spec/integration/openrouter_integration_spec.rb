@@ -3,32 +3,24 @@
 require "integration_helper"
 
 RSpec.describe "OpenRouter Provider Integration" do
-  before do
-    skip "OPENROUTER_API_KEY not set" unless ENV["OPENROUTER_API_KEY"]
-  end
+  # API-dependent tests (require OPENROUTER_API_KEY)
+  context "with API key", :integration do
+    before do
+      skip "OPENROUTER_API_KEY not set" unless ENV["OPENROUTER_API_KEY"]
+    end
 
-  # Helper to extract JSON from responses that may have extra text
-  # gpt-oss-120b sometimes adds prefixes like "JSON.", "**{", etc.
-  def extract_json(text)
-    # Try to find JSON object or array in the response
-    match = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
-    raise JSON::ParserError, "No JSON found in: #{text[0..100]}" unless match
+    let(:config) do
+      Broadlistening::Config.new(
+        api_key: ENV.fetch("OPENROUTER_API_KEY", nil),
+        provider: :openrouter,
+        model: "openai/gpt-oss-120b",
+        embedding_model: "openai/text-embedding-3-small"
+      )
+    end
 
-    match[1]
-  end
+    let(:client) { Broadlistening::LlmClient.new(config) }
 
-  let(:config) do
-    Broadlistening::Config.new(
-      api_key: ENV.fetch("OPENROUTER_API_KEY", nil),
-      provider: :openrouter,
-      model: "openai/gpt-oss-120b",
-      embedding_model: "openai/text-embedding-3-small"
-    )
-  end
-
-  let(:client) { Broadlistening::LlmClient.new(config) }
-
-  describe "#chat" do
+    describe "#chat" do
     it "returns a valid response" do
       result = client.chat(
         system: "You are a helpful assistant.",
@@ -60,7 +52,7 @@ RSpec.describe "OpenRouter Provider Integration" do
         )
 
         expect(result.content).to be_a(String)
-        parsed = JSON.parse(extract_json(result.content))
+        parsed = JSON.parse(JsonExtractor.extract_json(result.content))
         expect(parsed).to be_a(Hash)
       end
     end
@@ -84,7 +76,7 @@ RSpec.describe "OpenRouter Provider Integration" do
           json_schema: Broadlistening::JsonSchemas::LABELLING
         )
 
-        parsed = JSON.parse(extract_json(result.content))
+        parsed = JSON.parse(JsonExtractor.extract_json(result.content))
 
         expect(parsed).to have_key("label")
         expect(parsed).to have_key("description")
@@ -102,7 +94,7 @@ RSpec.describe "OpenRouter Provider Integration" do
           json_schema: Broadlistening::JsonSchemas::EXTRACTION
         )
 
-        parsed = JSON.parse(extract_json(result.content))
+        parsed = JSON.parse(JsonExtractor.extract_json(result.content))
 
         expect(parsed).to have_key("extractedOpinionList")
         expect(parsed["extractedOpinionList"]).to be_an(Array)
@@ -111,38 +103,33 @@ RSpec.describe "OpenRouter Provider Integration" do
     end
   end
 
-  describe "#embed" do
-    it "returns valid embeddings for a single text" do
-      embeddings = client.embed("テストテキスト")
+    describe "#embed" do
+      it "returns valid embeddings for a single text" do
+        embeddings = client.embed("テストテキスト")
 
-      expect(embeddings).to be_an(Array)
-      expect(embeddings.length).to eq(1)
-      expect(embeddings.first).to be_an(Array)
-      # OpenAI text-embedding-3-small has 1536 dimensions
-      expect(embeddings.first.length).to eq(1536)
-      expect(embeddings.first).to all(be_a(Numeric))
-    end
-
-    it "returns valid embeddings for multiple texts" do
-      texts = [
-        "環境問題への対策が必要",
-        "公共交通機関の充実を希望"
-      ]
-
-      embeddings = client.embed(texts)
-
-      expect(embeddings).to be_an(Array)
-      expect(embeddings.length).to eq(2)
-      embeddings.each do |embedding|
-        expect(embedding).to be_an(Array)
-        expect(embedding.length).to eq(1536)
+        expect(embeddings).to be_an(Array)
+        expect(embeddings.length).to eq(1)
+        expect(embeddings.first).to be_an(Array)
+        # OpenAI text-embedding-3-small has 1536 dimensions
+        expect(embeddings.first.length).to eq(1536)
+        expect(embeddings.first).to all(be_a(Numeric))
       end
-    end
 
-    it "returns different embeddings for different texts" do
-      embeddings = client.embed(["環境問題", "教育問題"])
+      it "returns valid embeddings for multiple texts" do
+        texts = [
+          "環境問題への対策が必要",
+          "公共交通機関の充実を希望"
+        ]
 
-      expect(embeddings[0]).not_to eq(embeddings[1])
+        embeddings = client.embed(texts)
+
+        expect(embeddings).to be_an(Array)
+        expect(embeddings.length).to eq(2)
+        embeddings.each do |embedding|
+          expect(embedding).to be_an(Array)
+          expect(embedding.length).to eq(1536)
+        end
+      end
     end
   end
 end

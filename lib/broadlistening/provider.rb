@@ -79,6 +79,10 @@ module Broadlistening
       @name == :azure
     end
 
+    def openrouter?
+      @name == :openrouter
+    end
+
     def build_openai_client(api_key:, base_url:, azure_api_version: nil)
       if azure?
         OpenAI::Client.new(

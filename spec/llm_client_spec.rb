@@ -353,18 +353,60 @@ RSpec.describe Broadlistening::LlmClient do
         )
       end
 
-      before do
+      it "sends requests to OpenRouter endpoint" do
         stub_request(:post, "https://openrouter.ai/api/v1/chat/completions")
           .to_return(
             status: 200,
             body: { "choices" => [ { "message" => { "content" => "OpenRouter response" } } ] }.to_json,
             headers: { "Content-Type" => "application/json" }
           )
-      end
 
-      it "sends requests to OpenRouter endpoint" do
         result = client.chat(system: system_prompt, user: user_message)
         expect(result.content).to eq("OpenRouter response")
+      end
+
+      it "includes response-healing plugin with json_mode" do
+        stub_request(:post, "https://openrouter.ai/api/v1/chat/completions")
+          .with(
+            body: hash_including(
+              "response_format" => { "type" => "json_object" },
+              "plugins" => [ { "id" => "response-healing" } ]
+            )
+          )
+          .to_return(
+            status: 200,
+            body: { "choices" => [ { "message" => { "content" => '{"result": "healed"}' } } ] }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+
+        result = client.chat(system: system_prompt, user: user_message, json_mode: true)
+        expect(result.content).to eq('{"result": "healed"}')
+      end
+
+      it "includes response-healing plugin with json_schema" do
+        json_schema = {
+          name: "test_schema",
+          schema: {
+            type: "object",
+            properties: { result: { type: "string" } },
+            required: [ "result" ]
+          }
+        }
+
+        stub_request(:post, "https://openrouter.ai/api/v1/chat/completions")
+          .with { |request|
+            body = JSON.parse(request.body)
+            body["response_format"]["type"] == "json_schema" &&
+              body["plugins"] == [ { "id" => "response-healing" } ]
+          }
+          .to_return(
+            status: 200,
+            body: { "choices" => [ { "message" => { "content" => '{"result": "schema_healed"}' } } ] }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+
+        result = client.chat(system: system_prompt, user: user_message, json_schema: json_schema)
+        expect(result.content).to eq('{"result": "schema_healed"}')
       end
     end
 

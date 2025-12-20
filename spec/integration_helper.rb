@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require_relative "support/json_extractor"
 
 # Integration tests require API keys as environment variables
 # Set them via:

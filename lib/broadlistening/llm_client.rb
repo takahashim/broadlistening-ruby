@@ -58,9 +58,9 @@ module Broadlistening
       # Sort by index if available (OpenAI), otherwise preserve order (Gemini)
       sorted = if data.first&.key?("index")
                  data.sort_by { |d| d["index"] }
-               else
+      else
                  data
-               end
+      end
       sorted.map { |d| d["embedding"] }
     end
 
@@ -82,6 +82,13 @@ module Broadlistening
         # Simple JSON mode: requires "JSON" in prompt
         params[:response_format] = { type: "json_object" }
       end
+
+      # OpenRouter: Enable response-healing plugin for JSON responses
+      # This automatically fixes malformed JSON (missing brackets, commas, quotes, etc.)
+      if @provider.openrouter? && (json_schema || json_mode)
+        params[:plugins] = [ { id: "response-healing" } ]
+      end
+
       params
     end
 
