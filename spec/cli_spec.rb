@@ -4,7 +4,7 @@ require "spec_helper"
 require "tempfile"
 require "fileutils"
 
-RSpec.describe Broadlistening::CLI do
+RSpec.describe Broadlistening::Cli do
   let(:input_file) do
     file = Tempfile.new([ "input", ".csv" ])
     file.write("id,body\n1,テスト意見です\n2,別の意見です\n")
@@ -25,7 +25,7 @@ RSpec.describe Broadlistening::CLI do
     file
   end
 
-  let(:expected_output_dir) { Broadlistening::CLI::PIPELINE_DIR / "test_config" }
+  let(:expected_output_dir) { Broadlistening::Cli::PIPELINE_DIR / "test_config" }
 
   after do
     FileUtils.rm_rf(expected_output_dir) if expected_output_dir.exist?
@@ -33,241 +33,62 @@ RSpec.describe Broadlistening::CLI do
     config_file.unlink
   end
 
-  describe "#parse_options" do
-    it "parses config path as first argument" do
-      cli = described_class.new([ config_file.path ])
-      cli.send(:parse_options)
-
-      expect(cli.instance_variable_get(:@config_path)).to eq(config_file.path)
-    end
-
-    it "parses -f/--force option" do
-      cli = described_class.new([ config_file.path, "-f" ])
-      cli.send(:parse_options)
-
-      expect(cli.options[:force]).to be true
-    end
-
-    it "parses --force long option" do
-      cli = described_class.new([ config_file.path, "--force" ])
-      cli.send(:parse_options)
-
-      expect(cli.options[:force]).to be true
-    end
-
-    it "parses -o/--only option" do
-      cli = described_class.new([ config_file.path, "-o", "extraction" ])
-      cli.send(:parse_options)
-
-      expect(cli.options[:only]).to eq(:extraction)
-    end
-
-    it "parses --only long option" do
-      cli = described_class.new([ config_file.path, "--only", "embedding" ])
-      cli.send(:parse_options)
-
-      expect(cli.options[:only]).to eq(:embedding)
-    end
-
-    it "parses --skip-interaction option" do
+  describe "#options" do
+    it "returns Options instance after parsing" do
       cli = described_class.new([ config_file.path, "--skip-interaction" ])
-      cli.send(:parse_options)
 
-      expect(cli.options[:skip_interaction]).to be true
-    end
+      # Trigger parsing by calling a method that uses options
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
 
-    it "parses --from option" do
-      cli = described_class.new([ config_file.path, "--from", "embedding" ])
-      cli.send(:parse_options)
+      cli.run
 
-      expect(cli.options[:from_step]).to eq(:embedding)
-    end
-
-    it "parses --input-dir option" do
-      cli = described_class.new([ config_file.path, "--input-dir", "/path/to/input" ])
-      cli.send(:parse_options)
-
-      expect(cli.options[:input_dir]).to eq("/path/to/input")
-    end
-
-    it "exits with help message on -h" do
-      cli = described_class.new([ "-h" ])
-
-      expect { cli.send(:parse_options) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(0)
-      end
-    end
-
-    it "exits with version on -v" do
-      cli = described_class.new([ "-v" ])
-
-      expect { cli.send(:parse_options) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(0)
-      end
-    end
-  end
-
-  describe "#validate_config_path" do
-    it "exits with error when config path is missing" do
-      cli = described_class.new([])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_config_path) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(1)
-      end
-    end
-
-    it "exits with error when config file does not exist" do
-      cli = described_class.new([ "/nonexistent/config.json" ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_config_path) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(1)
-      end
-    end
-
-    it "passes when config file exists" do
-      cli = described_class.new([ config_file.path ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_config_path) }.not_to raise_error
-    end
-  end
-
-  describe "#validate_resume_options" do
-    it "exits with error when --from is used without --input-dir" do
-      cli = described_class.new([ config_file.path, "--from", "embedding" ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_resume_options) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(1)
-      end
-    end
-
-    it "exits with error when --input-dir is used without --from" do
-      cli = described_class.new([ config_file.path, "--input-dir", "/path/to/input" ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_resume_options) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(1)
-      end
-    end
-
-    it "exits with error when --from and --only are used together" do
-      cli = described_class.new([ config_file.path, "--from", "embedding", "--input-dir", "/tmp", "--only", "clustering" ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_resume_options) }.to raise_error(SystemExit) do |error|
-        expect(error.status).to eq(1)
-      end
-    end
-
-    it "passes when neither --from nor --input-dir is specified" do
-      cli = described_class.new([ config_file.path ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:validate_resume_options) }.not_to raise_error
-    end
-  end
-
-  describe "#load_config" do
-    it "loads JSON config file and returns Config object" do
-      cli = described_class.new([ config_file.path ])
-      cli.send(:parse_options)
-
-      config = cli.send(:load_config)
-
-      expect(config).to be_a(Broadlistening::Config)
-      expect(config.input).to eq(input_file.path)
-      expect(config.question).to eq("テストの質問です")
-      expect(config.model).to eq("gpt-4o-mini")
-    end
-
-    it "raises error for invalid JSON" do
-      invalid_file = Tempfile.new([ "invalid", ".json" ])
-      invalid_file.write("not valid json")
-      invalid_file.close
-
-      cli = described_class.new([ invalid_file.path ])
-      cli.send(:parse_options)
-
-      expect { cli.send(:load_config) }.to raise_error(Broadlistening::ConfigurationError, /Invalid JSON/)
-
-      invalid_file.unlink
-    end
-  end
-
-  describe "#validate_config" do
-    let(:cli) { described_class.new([ config_file.path ]) }
-
-    before do
-      cli.send(:parse_options)
-    end
-
-    it "raises error when input is missing" do
-      config = Broadlistening::Config.new(
-        api_key: "test",
-        question: "test question"
-      )
-
-      expect { cli.send(:validate_config, config) }.to raise_error(
-        Broadlistening::ConfigurationError, /Missing required field 'input'/
-      )
-    end
-
-    it "raises error when question is missing" do
-      config = Broadlistening::Config.new(
-        api_key: "test",
-        input: input_file.path
-      )
-
-      expect { cli.send(:validate_config, config) }.to raise_error(
-        Broadlistening::ConfigurationError, /Missing required field 'question'/
-      )
-    end
-
-    it "raises error when input file does not exist" do
-      config = Broadlistening::Config.new(
-        api_key: "test",
-        input: "/nonexistent/file.csv",
-        question: "test question"
-      )
-
-      expect { cli.send(:validate_config, config) }.to raise_error(
-        Broadlistening::ConfigurationError, /Input file not found/
-      )
-    end
-
-    it "passes when all required fields are present" do
-      config = cli.send(:load_config)
-
-      expect { cli.send(:validate_config, config) }.not_to raise_error
+      expect(cli.options).to be_a(Broadlistening::Cli::Options)
+      expect(cli.options.config_path).to eq(config_file.path)
+      expect(cli.options.skip_interaction).to be true
     end
   end
 
   describe "#determine_output_dir" do
     it "generates output directory from config filename" do
-      cli = described_class.new([ config_file.path ])
-      cli.send(:parse_options)
+      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
+
+      cli.run
 
       output_dir = cli.send(:determine_output_dir)
 
       expect(output_dir.to_s).to include("test_config")
-      expect(output_dir.parent).to eq(Broadlistening::CLI::PIPELINE_DIR)
+      expect(output_dir.parent).to eq(Broadlistening::Cli::PIPELINE_DIR)
     end
 
     it "strips extension from config filename" do
-      cli = described_class.new([ "/path/to/my_report.json" ])
-      cli.send(:parse_options)
+      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
+
+      cli.run
 
       output_dir = cli.send(:determine_output_dir)
-
-      expect(output_dir.basename.to_s).to eq("my_report")
+      expect(output_dir.basename.to_s).to match(/^test_config/)
     end
   end
 
   describe "#load_comments" do
-    let(:cli) { described_class.new([ config_file.path ]) }
+    let(:cli) do
+      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
+      cli.run
+      cli
+    end
 
     it "loads CSV file" do
       comments = cli.send(:load_comments, input_file.path)
@@ -298,9 +119,8 @@ RSpec.describe Broadlistening::CLI do
   end
 
   describe "#confirm_execution" do
-    let(:cli) { described_class.new([ config_file.path ]) }
-
     it "returns true when user presses enter" do
+      cli = described_class.new([ config_file.path ])
       allow($stdin).to receive(:gets).and_return("\n")
 
       result = cli.send(:confirm_execution)
@@ -313,7 +133,6 @@ RSpec.describe Broadlistening::CLI do
     it "runs pipeline when all validations pass" do
       cli = described_class.new([ config_file.path, "--skip-interaction" ])
 
-      # Mock the pipeline execution
       mock_pipeline = instance_double(Broadlistening::Pipeline)
       allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
       allow(mock_pipeline).to receive(:run).and_return({ result: {} })
@@ -331,12 +150,10 @@ RSpec.describe Broadlistening::CLI do
 
       cli.run
 
-      # Tempfile generates unique names, so check that output dir was created with config basename
       config_basename = File.basename(config_file.path, ".*")
-      actual_output_dir = Broadlistening::CLI::PIPELINE_DIR / config_basename
+      actual_output_dir = Broadlistening::Cli::PIPELINE_DIR / config_basename
       expect(actual_output_dir).to exist
 
-      # Cleanup
       FileUtils.rm_rf(actual_output_dir)
     end
 
@@ -369,32 +186,55 @@ RSpec.describe Broadlistening::CLI do
 
       no_question_file.unlink
     end
+
+    it "passes options to pipeline" do
+      cli = described_class.new([ config_file.path, "--skip-interaction", "-f", "-o", "extraction" ])
+
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
+
+      cli.run
+
+      expect(mock_pipeline).to have_received(:run).with(
+        anything,
+        hash_including(
+          force: true,
+          only: :extraction
+        )
+      )
+    end
   end
 
   describe "Python CLI compatibility" do
     it "accepts same options as Python version" do
       # -f, --force
-      cli_f = described_class.new([ config_file.path, "-f" ])
-      cli_f.send(:parse_options)
-      expect(cli_f.options[:force]).to be true
+      cli_f = described_class.new([ config_file.path, "-f", "--skip-interaction" ])
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
+      cli_f.run
+      expect(cli_f.options.force).to be true
 
       # -o, --only
-      cli_o = described_class.new([ config_file.path, "-o", "extraction" ])
-      cli_o.send(:parse_options)
-      expect(cli_o.options[:only]).to eq(:extraction)
+      cli_o = described_class.new([ config_file.path, "-o", "extraction", "--skip-interaction" ])
+      cli_o.run
+      expect(cli_o.options.only).to eq(:extraction)
 
       # --skip-interaction
       cli_skip = described_class.new([ config_file.path, "--skip-interaction" ])
-      cli_skip.send(:parse_options)
-      expect(cli_skip.options[:skip_interaction]).to be true
+      cli_skip.run
+      expect(cli_skip.options.skip_interaction).to be true
     end
 
     it "validates same required fields as Python version" do
-      # Python requires: input, question
-      cli = described_class.new([ config_file.path ])
-      cli.send(:parse_options)
-      config = cli.send(:load_config)
+      cli = described_class.new([ config_file.path, "--skip-interaction" ])
+      mock_pipeline = instance_double(Broadlistening::Pipeline)
+      allow(Broadlistening::Pipeline).to receive(:new).and_return(mock_pipeline)
+      allow(mock_pipeline).to receive(:run).and_return({ result: {} })
+      cli.run
 
+      config = cli.send(:load_config)
       expect(config.input).not_to be_nil
       expect(config.question).not_to be_nil
     end

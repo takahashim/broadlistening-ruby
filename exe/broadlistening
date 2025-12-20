@@ -9,4 +9,4 @@ end
 
 require "broadlistening"
 
-Broadlistening::CLI.new(ARGV).run
+Broadlistening::Cli.new(ARGV).run
