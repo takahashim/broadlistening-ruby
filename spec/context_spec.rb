@@ -67,10 +67,14 @@ RSpec.describe Broadlistening::Context do
     context 'when embedding output exists (JSON format)' do
       before do
         FileUtils.mkdir_p(output_dir)
-        # First create args.csv
+        # First create args.csv and relations.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
           csv << [ 'arg-id', 'argument' ]
           csv << [ 'A1_0', 'test' ]
+        end
+        CSV.open(File.join(output_dir, 'relations.csv'), 'w') do |csv|
+          csv << [ 'arg-id', 'comment-id' ]
+          csv << [ 'A1_0', '1' ]
         end
         # embeddings.json (kept as JSON)
         File.write(File.join(output_dir, 'embeddings.json'), {
@@ -88,10 +92,14 @@ RSpec.describe Broadlistening::Context do
     context 'when clustering output exists (CSV format)' do
       before do
         FileUtils.mkdir_p(output_dir)
-        # First create args.csv
+        # First create args.csv and relations.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
           csv << [ 'arg-id', 'argument' ]
           csv << [ 'A1_0', 'test' ]
+        end
+        CSV.open(File.join(output_dir, 'relations.csv'), 'w') do |csv|
+          csv << [ 'arg-id', 'comment-id' ]
+          csv << [ 'A1_0', '1' ]
         end
         # hierarchical_clusters.csv
         CSV.open(File.join(output_dir, 'hierarchical_clusters.csv'), 'w') do |csv|
@@ -112,10 +120,14 @@ RSpec.describe Broadlistening::Context do
     context 'when labelling outputs exist (CSV format)' do
       before do
         FileUtils.mkdir_p(output_dir)
-        # First create args.csv
+        # First create args.csv and relations.csv
         CSV.open(File.join(output_dir, 'args.csv'), 'w') do |csv|
           csv << [ 'arg-id', 'argument' ]
           csv << [ 'A1_0', 'test' ]
+        end
+        CSV.open(File.join(output_dir, 'relations.csv'), 'w') do |csv|
+          csv << [ 'arg-id', 'comment-id' ]
+          csv << [ 'A1_0', '1' ]
         end
         # hierarchical_initial_labels.csv
         CSV.open(File.join(output_dir, 'hierarchical_initial_labels.csv'), 'w') do |csv|

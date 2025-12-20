@@ -51,25 +51,31 @@ module Broadlistening
         relations_file = @dir / file_config[:relations]
         return unless args_file.exist?
 
+        # Load relations first to build the mapping
+        relations_map = load_relations_map(relations_file)
+
         CSV.foreach(args_file, headers: true) do |row|
+          arg_id = row["arg-id"]
+          comment_id = relations_map[arg_id]
+          raise Error, "Missing comment_id for argument #{arg_id}. Ensure relations.csv exists." unless comment_id
+
           @context.arguments << Argument.new(
-            arg_id: row["arg-id"],
+            arg_id: arg_id,
             argument: row["argument"],
-            comment_id: nil
+            comment_id: comment_id
           )
         end
+      end
 
-        return unless relations_file.exist?
+      def load_relations_map(relations_file)
+        raise Error, "relations.csv not found: #{relations_file}" unless relations_file.exist?
 
         relations_map = {}
         CSV.foreach(relations_file, headers: true) do |row|
           relations_map[row["arg-id"]] = row["comment-id"]
           @context.relations << Relation.new(arg_id: row["arg-id"], comment_id: row["comment-id"])
         end
-
-        @context.arguments.each do |arg|
-          arg.comment_id = relations_map[arg.arg_id]
-        end
+        relations_map
       end
 
       def load_embedding(filename)
