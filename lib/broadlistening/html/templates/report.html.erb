@@ -294,6 +294,18 @@
       </svg>`
     };
 
+    // Decode HTML entities in JSON data embedded via ERB with escape: true
+    function decodeHtmlEntities(str) {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = str;
+      return textarea.value;
+    }
+
+    function parseEmbeddedJson(elementId) {
+      const raw = document.getElementById(elementId).textContent;
+      return JSON.parse(decodeHtmlEntities(raw));
+    }
+
     // ===================
     // DOM Elements (cached)
     // ===================
@@ -633,8 +645,8 @@
         'Plotly.jsの読み込みに失敗しました。<br>ネットワーク接続を確認してください。'
       );
     } else {
-      const fullPoints = JSON.parse(document.getElementById('full-points-data').textContent);
-      const allClusters = JSON.parse(document.getElementById('all-clusters-data').textContent);
+      const fullPoints = parseEmbeddedJson('full-points-data');
+      const allClusters = parseEmbeddedJson('all-clusters-data');
 
       if (!fullPoints || fullPoints.length === 0) {
         showError(elements.plot, '表示するデータがありません。');
