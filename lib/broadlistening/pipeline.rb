@@ -103,10 +103,14 @@ module Broadlistening
       params = planner.extract_current_params(step_name)
       payload = { step: step_name, step_index: index, step_total: steps.size, params: params }
 
-      instrument("step.broadlistening", payload) do
-        step = step_class(step_name).new(@config, context)
-        step.execute
-      end
+      # Notify step start before execution
+      instrument("step.start.broadlistening", payload)
+
+      step = step_class(step_name).new(@config, context)
+      step.execute
+
+      # Notify step completion after execution
+      instrument("step.broadlistening", payload)
 
       duration = Time.now - start_time
       step_token_usage = TokenUsage.new(

@@ -121,7 +121,7 @@ module Broadlistening
     end
 
     def setup_progress_output
-      ActiveSupport::Notifications.subscribe("step.broadlistening") do |*, payload|
+      ActiveSupport::Notifications.subscribe("step.start.broadlistening") do |*, payload|
         puts "Running step: #{payload[:step]}"
         if @options.verbose && payload[:params]
           payload[:params].each do |key, value|
