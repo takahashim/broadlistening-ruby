@@ -40,7 +40,7 @@ module Broadlistening
 
     def self.default_specs_path
       ENV.fetch("BROADLISTENING_SPECS_PATH") do
-        File.expand_path("../../../../../server/broadlistening/pipeline/hierarchical_specs.json", __dir__)
+        File.expand_path("data/hierarchical_specs.json", __dir__)
       end
     end
 
