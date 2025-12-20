@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "broadlistening"
+
+Broadlistening::Html::Cli.new(ARGV).run
