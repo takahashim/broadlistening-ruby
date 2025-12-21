@@ -82,18 +82,14 @@ module Broadlistening
       end
     end
 
-    # Get all cluster arrays (for backward compatibility)
+    # Alias for levels (for Hash-like API compatibility)
+    alias keys levels
+
+    # Get all cluster arrays in level order
     #
     # @return [Array<Array<Integer>>]
     def values
-      @data.values
-    end
-
-    # Get all level keys (for backward compatibility)
-    #
-    # @return [Array<Integer>]
-    def keys
-      @data.keys
+      levels.map { |level| @data[level] }
     end
 
     # Convert to hash for serialization
