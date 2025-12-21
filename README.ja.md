@@ -41,11 +41,18 @@ broadlistening config.json [options]
 ```
 
 **オプション:**
-- `-f, --force` - 以前の実行結果に関係なく、すべてのステップを強制的に再実行
-- `-o, --only STEP` - 指定したステップのみを実行（extraction, embedding, clustering など）
-- `--skip-interaction` - 確認プロンプトをスキップして即座に実行
-- `-h, --help` - ヘルプメッセージを表示
-- `-v, --version` - バージョンを表示
+
+| オプション | 説明 |
+|------------|------|
+| `-f, --force` | 以前の実行結果に関係なく、すべてのステップを強制的に再実行 |
+| `-o, --only STEP` | 指定したステップのみを実行（extraction, embedding, clustering など） |
+| `--from STEP` | 指定したステップからパイプラインを再開 |
+| `--input-dir DIR` | 再開時に別の入力ディレクトリを使用（`--from` と併用） |
+| `-i, --input FILE` | 入力ファイルのパス（CSV または JSON）- config を上書き |
+| `-n, --dry-run` | 実際に実行せずに何が実行されるかを表示 |
+| `-V, --verbose` | ステップのパラメータや LLM 使用量などの詳細を表示 |
+| `-h, --help` | ヘルプメッセージを表示 |
+| `-v, --version` | バージョンを表示 |
 
 **config.json の例:**
 
@@ -70,17 +77,17 @@ comment-id,comment-body
 **実行例:**
 
 ```bash
-# パイプライン全体を実行
-broadlistening config.json
+broadlistening config.json                        # パイプライン全体を実行
+broadlistening config.json --dry-run              # 実行内容をプレビュー
+broadlistening config.json --from clustering      # 指定ステップから再開
+broadlistening config.json --input commments.csv  # 入力ファイルを上書き
+```
 
-# すべてのステップを強制的に再実行
-broadlistening config.json --force
+### HTML レポートジェネレーター
 
-# extraction ステップのみを実行
-broadlistening config.json --only extraction
-
-# 確認プロンプトなしで実行
-broadlistening config.json --skip-interaction
+```bash
+broadlistening-html outputs/report/hierarchical_result.json            # レポート生成
+broadlistening-html outputs/report/hierarchical_result.json --help     # オプション表示
 ```
 
 ### Ruby API
@@ -108,34 +115,6 @@ puts result[:overview]
 puts result[:clusters]
 ```
 
-### Rails での使用例
-
-```ruby
-# app/jobs/analysis_job.rb
-class AnalysisJob < ApplicationJob
-  queue_as :analysis
-
-  def perform(proposal_id)
-    proposal = Proposal.find(proposal_id)
-    comments = proposal.comments.map do |c|
-      { id: c.id, body: c.body, proposal_id: c.proposal_id }
-    end
-
-    pipeline = Broadlistening::Pipeline.new(
-      api_key: ENV['OPENAI_API_KEY'],
-      model: "gpt-4o-mini",
-      cluster_nums: [5, 15]
-    )
-    result = pipeline.run(comments)
-
-    proposal.create_analysis_result!(
-      result_data: result,
-      comment_count: comments.size
-    )
-  end
-end
-```
-
 ### 設定オプション
 
 ```ruby
@@ -154,89 +133,24 @@ Broadlistening::Pipeline.new(
 )
 ```
 
-### ローカル LLM の使用
+### ローカル LLM の使用 (Ollama)
 
-GPU を搭載したマシンでローカル LLM を使用したい場合は、以下の手順に従ってください：
-
-1. Ollama をインストールして起動します
-2. 必要なモデルをダウンロードします：
-   ```sh
-   ollama pull llama3
-   ollama pull nomic-embed-text
-   ```
-3. Ruby で `provider: :local` を指定して使用します：
-   ```ruby
-   config = Broadlistening::Config.new(
-     provider: :local,
-     model: "llama3",
-     embedding_model: "nomic-embed-text",
-     local_llm_address: "localhost:11434",
-     cluster_nums: [5, 15]
-   )
-   pipeline = Broadlistening::Pipeline.new(config)
-   result = pipeline.run(comments, output_dir: "./output")
-   ```
-
-**注意**:
-
-- ローカル LLM の使用には十分な GPU メモリが必要です（8GB 以上推奨）
-- 初回起動時にはモデルのダウンロードに時間がかかる場合があります
+```ruby
+config = Broadlistening::Config.new(
+  provider: :local,
+  model: "llama3",
+  embedding_model: "nomic-embed-text",
+  local_llm_address: "localhost:11434"
+)
+```
 
 ## 出力形式
 
-パイプラインの結果は以下の構造を持つ Hash です：
-
-```ruby
-{
-  arguments: [
-    {
-      arg_id: "A1_0",
-      argument: "環境問題への対策が必要",
-      x: 0.5,           # UMAP X座標
-      y: 0.3,           # UMAP Y座標
-      cluster_ids: ["0", "1_0", "2_3"]  # 所属クラスタID
-    },
-    # ...
-  ],
-  clusters: [
-    {
-      level: 0,
-      id: "0",
-      label: "全体",
-      description: "",
-      count: 100,
-      parent: nil
-    },
-    {
-      level: 1,
-      id: "1_0",
-      label: "環境・エネルギー",
-      description: "環境問題やエネルギー政策に関する意見",
-      count: 25,
-      parent: "0"
-    },
-    # ...
-  ],
-  relations: [
-    { arg_id: "A1_0", comment_id: "1", proposal_id: "123" },
-    # ...
-  ],
-  comment_count: 50,
-  argument_count: 100,
-  overview: "分析の概要テキスト...",
-  config: { model: "gpt-4o-mini", ... }
-}
-```
-
-## 依存関係
-
-- Ruby >= 3.1.0
-- activesupport >= 7.0
-- numo-narray ~> 0.9
-- ruby-openai ~> 7.0
-- parallel ~> 1.20
-- rice ~> 4.7.0
-- umappp ~> 0.2
+パイプラインは `hierarchical_result.json` を出力します：
+- `arguments` - UMAP 座標とクラスタ割り当てを含む抽出された意見
+- `clusters` - ラベル付きの階層的クラスタ構造
+- `overview` - LLM が生成した概要
+- `config` - 使用したパイプライン設定
 
 ### umappp のインストール
 

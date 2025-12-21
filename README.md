@@ -41,11 +41,18 @@ broadlistening config.json [options]
 ```
 
 **Options:**
-- `-f, --force` - Force re-run all steps regardless of previous execution
-- `-o, --only STEP` - Run only the specified step (extraction, embedding, clustering, etc.)
-- `--skip-interaction` - Skip the interactive confirmation prompt
-- `-h, --help` - Show help message
-- `-v, --version` - Show version
+
+| Option | Description |
+|--------|-------------|
+| `-f, --force` | Force re-run all steps regardless of previous execution |
+| `-o, --only STEP` | Run only the specified step (extraction, embedding, clustering, etc.) |
+| `--from STEP` | Resume pipeline from specified step |
+| `--input-dir DIR` | Use different input directory for resuming (requires `--from`) |
+| `-i, --input FILE` | Input file path (CSV or JSON) - overrides config |
+| `-n, --dry-run` | Show what would be executed without actually running |
+| `-V, --verbose` | Show detailed output including step parameters and LLM usage |
+| `-h, --help` | Show help message |
+| `-v, --version` | Show version |
 
 **Example config.json:**
 
@@ -70,17 +77,17 @@ comment-id,comment-body
 **Example:**
 
 ```bash
-# Run the full pipeline
-broadlistening config.json
+broadlistening config.json                       # Run full pipeline
+broadlistening config.json --dry-run             # Preview without running
+broadlistening config.json --from clustering     # Resume from step
+broadlistening config.json --input comments.csv  # Override input file
+```
 
-# Force re-run all steps
-broadlistening config.json --force
+### HTML Report Generator
 
-# Run only the extraction step
-broadlistening config.json --only extraction
-
-# Run without confirmation prompt
-broadlistening config.json --skip-interaction
+```bash
+broadlistening-html outputs/report/hierarchical_result.json            # Generate report
+broadlistening-html outputs/report/hierarchical_result.json --help     # Show options
 ```
 
 ### Ruby API
@@ -108,34 +115,6 @@ puts result[:overview]
 puts result[:clusters]
 ```
 
-### Rails Example
-
-```ruby
-# app/jobs/analysis_job.rb
-class AnalysisJob < ApplicationJob
-  queue_as :analysis
-
-  def perform(proposal_id)
-    proposal = Proposal.find(proposal_id)
-    comments = proposal.comments.map do |c|
-      { id: c.id, body: c.body, proposal_id: c.proposal_id }
-    end
-
-    pipeline = Broadlistening::Pipeline.new(
-      api_key: ENV['OPENAI_API_KEY'],
-      model: "gpt-4o-mini",
-      cluster_nums: [5, 15]
-    )
-    result = pipeline.run(comments, output_dir: "./output")
-
-    proposal.create_analysis_result!(
-      result_data: result,
-      comment_count: comments.size
-    )
-  end
-end
-```
-
 ### Configuration Options
 
 ```ruby
@@ -154,89 +133,24 @@ Broadlistening::Pipeline.new(
 )
 ```
 
-### Using Local LLM
+### Using Local LLM (Ollama)
 
-If you want to use a local LLM on a machine with GPU, follow these steps:
-
-1. Install and start Ollama
-2. Download the required models:
-   ```sh
-   ollama pull llama3
-   ollama pull nomic-embed-text
-   ```
-3. Use `provider: :local` in Ruby:
-   ```ruby
-   config = Broadlistening::Config.new(
-     provider: :local,
-     model: "llama3",
-     embedding_model: "nomic-embed-text",
-     local_llm_address: "localhost:11434",
-     cluster_nums: [5, 15]
-   )
-   pipeline = Broadlistening::Pipeline.new(config)
-   result = pipeline.run(comments, output_dir: "./output")
-   ```
-
-**Note**:
-
-- Using local LLM requires sufficient GPU memory (8GB or more recommended)
-- Model downloads may take time on first startup
+```ruby
+config = Broadlistening::Config.new(
+  provider: :local,
+  model: "llama3",
+  embedding_model: "nomic-embed-text",
+  local_llm_address: "localhost:11434"
+)
+```
 
 ## Output Format
 
-The pipeline result is a Hash with the following structure:
-
-```ruby
-{
-  arguments: [
-    {
-      arg_id: "A1_0",
-      argument: "Environmental measures are needed",
-      x: 0.5,           # UMAP X coordinate
-      y: 0.3,           # UMAP Y coordinate
-      cluster_ids: ["0", "1_0", "2_3"]  # Cluster IDs
-    },
-    # ...
-  ],
-  clusters: [
-    {
-      level: 0,
-      id: "0",
-      label: "All",
-      description: "",
-      count: 100,
-      parent: nil
-    },
-    {
-      level: 1,
-      id: "1_0",
-      label: "Environment & Energy",
-      description: "Opinions on environmental issues and energy policy",
-      count: 25,
-      parent: "0"
-    },
-    # ...
-  ],
-  relations: [
-    { arg_id: "A1_0", comment_id: "1", proposal_id: "123" },
-    # ...
-  ],
-  comment_count: 50,
-  argument_count: 100,
-  overview: "Analysis summary text...",
-  config: { model: "gpt-4o-mini", ... }
-}
-```
-
-## Dependencies
-
-- Ruby >= 3.1.0
-- activesupport >= 7.0
-- numo-narray ~> 0.9
-- ruby-openai ~> 7.0
-- parallel ~> 1.20
-- rice ~> 4.7.0
-- umappp ~> 0.2
+The pipeline outputs `hierarchical_result.json` containing:
+- `arguments` - Extracted opinions with UMAP coordinates and cluster assignments
+- `clusters` - Hierarchical cluster structure with labels
+- `overview` - LLM-generated summary
+- `config` - Pipeline configuration used
 
 ### Installing umappp
 
