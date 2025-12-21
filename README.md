@@ -16,6 +16,8 @@ Broadlistening is a pipeline for analyzing large volumes of comments and opinion
 6. **Overview** - Generate overall summary using LLM
 7. **Aggregation** - Output results in JSON format
 
+Results can be visualized as an interactive HTML report using `broadlistening-html`.
+
 ## Installation
 
 Add to your Gemfile:
@@ -40,7 +42,7 @@ After installation, you can use the `broadlistening` command:
 broadlistening config.json [options]
 ```
 
-**Options:**
+#### Options
 
 | Option | Description |
 |--------|-------------|
@@ -54,7 +56,7 @@ broadlistening config.json [options]
 | `-h, --help` | Show help message |
 | `-v, --version` | Show version |
 
-**Example config.json:**
+#### Example config.json
 
 ```json
 {
@@ -66,7 +68,7 @@ broadlistening config.json [options]
 }
 ```
 
-**Input CSV format:**
+#### Input CSV format
 
 ```csv
 comment-id,comment-body
@@ -74,7 +76,7 @@ comment-id,comment-body
 2,I hope for better public transportation
 ```
 
-**Example:**
+#### Example
 
 ```bash
 broadlistening config.json                       # Run full pipeline
@@ -85,10 +87,14 @@ broadlistening config.json --input comments.csv  # Override input file
 
 ### HTML Report Generator
 
+Generate a standalone HTML file from pipeline results for previewing and sharing. The report displays clusters, subclusters, and extracted opinions in an interactive format.
+
 ```bash
 broadlistening-html outputs/report/hierarchical_result.json            # Generate report
 broadlistening-html outputs/report/hierarchical_result.json --help     # Show options
 ```
+
+## Library Usage
 
 ### Ruby API
 
@@ -119,17 +125,12 @@ puts result[:clusters]
 
 ```ruby
 Broadlistening::Pipeline.new(
-  api_key: "your-api-key",          # OpenAI API key (required)
+  api_key: "...",                   # Omit to use env var (OPENAI_API_KEY, GEMINI_API_KEY, etc.)
   model: "gpt-4o-mini",             # LLM model (default: gpt-4o-mini)
   embedding_model: "text-embedding-3-small",  # Embedding model
   cluster_nums: [5, 15],            # Cluster hierarchy levels (default: [5, 15])
   workers: 10,                      # Number of parallel workers
-  prompts: {                        # Custom prompts (optional)
-    extraction: "...",
-    initial_labelling: "...",
-    merge_labelling: "...",
-    overview: "..."
-  }
+  prompts: { extraction: "...", ... }  # Custom prompts (optional)
 )
 ```
 
@@ -151,18 +152,6 @@ The pipeline outputs `hierarchical_result.json` containing:
 - `clusters` - Hierarchical cluster structure with labels
 - `overview` - LLM-generated summary
 - `config` - Pipeline configuration used
-
-### Installing umappp
-
-[umappp](https://rubygems.org/gems/umappp) includes C++ native extensions and requires a C++ compiler:
-
-```bash
-# macOS
-CXX=clang++ gem install umappp
-
-# Linux
-gem install umappp
-```
 
 ## Development
 

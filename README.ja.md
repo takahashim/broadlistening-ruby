@@ -16,6 +16,8 @@ Broadlistening は、大量のコメントや意見を AI を活用して分析�
 6. **Overview (概要生成)** - 全体の概要を LLM で生成
 7. **Aggregation (JSON 組み立て)** - 結果を JSON 形式で出力
 
+結果は `broadlistening-html` でインタラクティブな HTML レポートとして可視化できます。
+
 ## インストール
 
 Gemfile に追加：
@@ -40,7 +42,7 @@ bundle install
 broadlistening config.json [options]
 ```
 
-**オプション:**
+#### オプション
 
 | オプション | 説明 |
 |------------|------|
@@ -54,7 +56,7 @@ broadlistening config.json [options]
 | `-h, --help` | ヘルプメッセージを表示 |
 | `-v, --version` | バージョンを表示 |
 
-**config.json の例:**
+#### config.json の例
 
 ```json
 {
@@ -66,7 +68,7 @@ broadlistening config.json [options]
 }
 ```
 
-**入力 CSV フォーマット:**
+#### 入力 CSV フォーマット
 
 ```csv
 comment-id,comment-body
@@ -74,7 +76,7 @@ comment-id,comment-body
 2,公共交通機関の充実を希望します
 ```
 
-**実行例:**
+#### 実行例
 
 ```bash
 broadlistening config.json                        # パイプライン全体を実行
@@ -85,10 +87,14 @@ broadlistening config.json --input commments.csv  # 入力ファイルを上書�
 
 ### HTML レポートジェネレーター
 
+パイプラインの結果から単体の HTML ファイルを生成します。プレビューや共有に便利です。クラスタ、サブクラスタ、抽出された意見をインタラクティブに表示します。
+
 ```bash
 broadlistening-html outputs/report/hierarchical_result.json            # レポート生成
 broadlistening-html outputs/report/hierarchical_result.json --help     # オプション表示
 ```
+
+## ライブラリとしての使い方
 
 ### Ruby API
 
@@ -119,17 +125,12 @@ puts result[:clusters]
 
 ```ruby
 Broadlistening::Pipeline.new(
-  api_key: "your-api-key",          # OpenAI API キー（必須）
+  api_key: "...",                   # 省略時は環境変数を使用（OPENAI_API_KEY, GEMINI_API_KEY など）
   model: "gpt-4o-mini",             # LLM モデル（デフォルト: gpt-4o-mini）
   embedding_model: "text-embedding-3-small",  # 埋め込みモデル
   cluster_nums: [5, 15],            # クラスタ階層の数（デフォルト: [5, 15]）
   workers: 10,                      # 並列処理のワーカー数
-  prompts: {                        # カスタムプロンプト（オプション）
-    extraction: "...",
-    initial_labelling: "...",
-    merge_labelling: "...",
-    overview: "..."
-  }
+  prompts: { extraction: "...", ... }  # カスタムプロンプト（オプション）
 )
 ```
 
@@ -151,18 +152,6 @@ config = Broadlistening::Config.new(
 - `clusters` - ラベル付きの階層的クラスタ構造
 - `overview` - LLM が生成した概要
 - `config` - 使用したパイプライン設定
-
-### umappp のインストール
-
-[umappp](https://rubygems.org/gems/umappp) は C++ ネイティブ拡張を含むため、インストール時に C++ コンパイラが必要です：
-
-```bash
-# macOS
-CXX=clang++ gem install umappp
-
-# Linux
-gem install umappp
-```
 
 ## 開発
 
