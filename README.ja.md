@@ -168,4 +168,8 @@ bin/console
 
 ## ライセンス
 
-AGPL 3.0
+Copyright (C) 2025 Masayoshi Takahashi
+
+This repository is licensed under the GNU Affero General Public License v3.0.
+Unless otherwise noted, all files in this repository are covered by this license.
+See the LICENSE file for details.
