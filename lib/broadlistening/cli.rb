@@ -5,7 +5,19 @@ require "pathname"
 
 module Broadlistening
   class Cli
-    PIPELINE_DIR = Pathname.new(__dir__).parent.parent / "outputs"
+    DEFAULT_PIPELINE_DIR = Pathname.new(__dir__).parent.parent / "outputs"
+
+    class << self
+      attr_writer :pipeline_dir
+
+      def pipeline_dir
+        @pipeline_dir || DEFAULT_PIPELINE_DIR
+      end
+
+      def reset_pipeline_dir!
+        @pipeline_dir = nil
+      end
+    end
 
     attr_reader :options
 
@@ -49,7 +61,7 @@ module Broadlistening
       # Python版と同様: 設定ファイル名から出力ディレクトリを決定
       # e.g., "config/my_report.json" -> "outputs/my_report"
       config_basename = File.basename(@options.config_path, ".*")
-      PIPELINE_DIR / config_basename
+      self.class.pipeline_dir / config_basename
     end
 
     def ensure_output_dir(output_dir)

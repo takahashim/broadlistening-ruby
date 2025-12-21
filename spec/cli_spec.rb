@@ -5,6 +5,8 @@ require "tempfile"
 require "fileutils"
 
 RSpec.describe Broadlistening::Cli do
+  let(:test_pipeline_dir) { Dir.mktmpdir("cli_spec_outputs") }
+
   let(:input_file) do
     file = Tempfile.new([ "input", ".csv" ])
     file.write("id,body\n1,テスト意見です\n2,別の意見です\n")
@@ -25,10 +27,13 @@ RSpec.describe Broadlistening::Cli do
     file
   end
 
-  let(:expected_output_dir) { Broadlistening::Cli::PIPELINE_DIR / "test_config" }
+  before do
+    described_class.pipeline_dir = Pathname.new(test_pipeline_dir)
+  end
 
   after do
-    FileUtils.rm_rf(expected_output_dir) if expected_output_dir.exist?
+    described_class.reset_pipeline_dir!
+    FileUtils.rm_rf(test_pipeline_dir)
     input_file.unlink
     config_file.unlink
   end
@@ -62,7 +67,7 @@ RSpec.describe Broadlistening::Cli do
       output_dir = cli.send(:determine_output_dir)
 
       expect(output_dir.to_s).to include("test_config")
-      expect(output_dir.parent).to eq(Broadlistening::Cli::PIPELINE_DIR)
+      expect(output_dir.parent).to eq(described_class.pipeline_dir)
     end
 
     it "strips extension from config filename" do
@@ -139,10 +144,8 @@ RSpec.describe Broadlistening::Cli do
       cli.run
 
       config_basename = File.basename(config_file.path, ".*")
-      actual_output_dir = Broadlistening::Cli::PIPELINE_DIR / config_basename
+      actual_output_dir = described_class.pipeline_dir / config_basename
       expect(actual_output_dir).to exist
-
-      FileUtils.rm_rf(actual_output_dir)
     end
 
     it "exits with error on Broadlistening::Error" do
